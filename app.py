@@ -4,6 +4,20 @@ from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from news_monitor import collect_news
+from campaign_signals import (
+    ACTIVITY_FIELDS,
+    ANALYST_FIELDS,
+    DONATION_FIELDS,
+    KALSHI_EVENT_TICKER,
+    KALSHI_EVENT_URL,
+    KALSHI_MARKET_FIELDS,
+    VEC_DISCLOSURES_URL,
+    append_csv_record,
+    fetch_kalshi_event_markets,
+    kalshi_market_snapshot_rows,
+    load_csv_or_empty,
+    sydney_now,
+)
 from kew_forecast import (
     MODEL_VERSION,
     build_kew_candidate_scenario,
@@ -28,6 +42,10 @@ KEW_EXTERNAL_FORECAST_PATH = DATA_DIR / "kew_external_forecast_benchmarks.csv"
 KEW_EXTERNAL_2CP_PATH = DATA_DIR / "kew_external_2cp_benchmarks.csv"
 VIC_POLL_AVERAGE_BENCHMARK_PATH = DATA_DIR / "vic_poll_average_benchmarks.csv"
 KEW_FORECAST_SNAPSHOTS_PATH = DATA_DIR / "kew_forecast_snapshots.csv"
+KEW_DONATIONS_PATH = DATA_DIR / "kew_campaign_donations.csv"
+KEW_ACTIVITY_PATH = DATA_DIR / "kew_campaign_activity.csv"
+KALSHI_SNAPSHOTS_PATH = DATA_DIR / "kalshi_market_snapshots.csv"
+ANTONY_GREEN_NOTES_PATH = DATA_DIR / "antony_green_notes.csv"
 
 st.set_page_config(
     page_title="Electoral Sentiment Tracker",
@@ -389,6 +407,564 @@ if jurisdiction == "Victoria":
                     )
                 else:
                     st.info("No published Kew seat-level poll has been loaded.")
+
+            st.markdown("#### Campaign signals and expert analysis")
+            st.caption(
+                "These are separate indicators of campaign resources, campaign effort, "
+                "statewide market expectations and published electoral analysis. None is "
+                "treated as a direct measure of Kew voter preference."
+            )
+
+            donation_tab, activity_tab, market_tab, analyst_tab = st.tabs([
+                "Disclosed donations", "Campaign presence", "Kalshi market", "Antony Green"
+            ])
+
+            with donation_tab:
+                st.markdown("##### Publicly disclosed campaign donations")
+                st.markdown(
+                    f"[Open the VEC public disclosure register ↗]({VEC_DISCLOSURES_URL})"
+                )
+                st.caption(
+                    "Victoria's 2026 disclosure threshold is $1,290 and disclosure is generally "
+                    "required within 21 days. This ledger only captures disclosed entries; "
+                    "small donations and not-yet-disclosed donations are not visible. "
+                    "We do not store individual donor names in this tracker."
+                )
+                donation_data = load_csv_or_empty(
+                    KEW_DONATIONS_PATH, DONATION_FIELDS
+                )
+                if not donation_data.empty:
+                    donation_data["amount_aud"] = pd.to_numeric(
+                        donation_data["amount_aud"], errors="coerce"
+                    )
+                    d1, d2, d3 = st.columns(3)
+                    d1.metric(
+                        "Disclosed amount captured",
+                        f"${donation_data['amount_aud'].sum(skipna=True):,.0f}"
+                    )
+                    d2.metric("Disclosure records", len(donation_data))
+                    d3.metric(
+                        "Recipients",
+                        donation_data["recipient_name"].nunique()
+                    )
+                    by_recipient = (
+                        donation_data.dropna(subset=["amount_aud"])
+                        .groupby("recipient_name")["amount_aud"]
+                        .sum()
+                        .sort_values(ascending=False)
+                    )
+                    if not by_recipient.empty:
+                        st.bar_chart(by_recipient.rename("Disclosed amount (AUD)"))
+                    donation_display = donation_data.sort_values(
+                        "disclosure_date", ascending=False
+                    )[
+                        [
+                            "donation_date", "disclosure_date", "recipient_name",
+                            "recipient_type", "donor_category", "amount_aud",
+                            "geographic_scope", "source_url"
+                        ]
+                    ].rename(columns={
+                        "donation_date": "Donation date",
+                        "disclosure_date": "Disclosure date",
+                        "recipient_name": "Recipient",
+                        "recipient_type": "Recipient type",
+                        "donor_category": "Donor category",
+                        "amount_aud": "Amount (AUD)",
+                        "geographic_scope": "Geographic scope",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        donation_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Source": st.column_config.LinkColumn(
+                                "Source", display_text="Open source ↗"
+                            )
+                        },
+                    )
+                else:
+                    st.info(
+                        "No donation disclosures have been entered yet. An empty ledger means "
+                        "we have not captured records; it does not mean candidates received no donations."
+                    )
+
+                with st.expander("Record a VEC donation disclosure"):
+                    candidate_options = (
+                        KEW_CANDIDATES["candidate_name"].astype(str).tolist()
+                        if not KEW_CANDIDATES.empty else []
+                    )
+                    with st.form("kew_add_donation_form"):
+                        donation_date_value = st.date_input(
+                            "Donation date", value=LOCAL_TODAY, key="donation_date"
+                        )
+                        disclosure_date_value = st.date_input(
+                            "Disclosure date", value=LOCAL_TODAY, key="disclosure_date"
+                        )
+                        donation_recipient = st.selectbox(
+                            "Recipient",
+                            candidate_options + [
+                                "Liberal Party (statewide)",
+                                "Australian Labor Party (statewide)",
+                                "The Greens (statewide)",
+                                "One Nation Victoria (statewide)",
+                                "Other party / associated entity",
+                                "Third-party campaigner",
+                            ],
+                        )
+                        donation_type = st.selectbox(
+                            "Recipient type",
+                            [
+                                "Kew candidate",
+                                "Statewide political party",
+                                "Associated entity",
+                                "Third-party campaigner",
+                            ],
+                        )
+                        donor_category = st.selectbox(
+                            "Donor category (not donor name)",
+                            [
+                                "Individual",
+                                "Company / business",
+                                "Trade union",
+                                "Association / community organisation",
+                                "Political party / associated entity",
+                                "Other / unclear",
+                            ],
+                        )
+                        amount_value = st.number_input(
+                            "Disclosed donation amount (AUD)",
+                            min_value=1290.0,
+                            value=1290.0,
+                            step=100.0,
+                        )
+                        donation_scope = st.selectbox(
+                            "Geographic scope",
+                            [
+                                "Kew candidate recipient",
+                                "Statewide party / entity",
+                                "Unknown / not seat-specific",
+                            ],
+                        )
+                        donation_source = st.text_input(
+                            "Source URL", value=VEC_DISCLOSURES_URL
+                        )
+                        donation_note = st.text_area(
+                            "Evidence note (e.g. record date, donation type, VEC reference)"
+                        )
+                        donation_submitted = st.form_submit_button(
+                            "Add disclosed donation"
+                        )
+                    if donation_submitted:
+                        record_id = (
+                            f"DON-{donation_date_value.isoformat()}-"
+                            f"{len(donation_data) + 1:04d}-{abs(hash(donation_recipient)) % 10000:04d}"
+                        )
+                        append_csv_record(
+                            KEW_DONATIONS_PATH,
+                            {
+                                "record_id": record_id,
+                                "donation_date": donation_date_value.isoformat(),
+                                "disclosure_date": disclosure_date_value.isoformat(),
+                                "recipient_name": donation_recipient,
+                                "recipient_type": donation_type,
+                                "donor_category": donor_category,
+                                "amount_aud": amount_value,
+                                "geographic_scope": donation_scope,
+                                "source_url": donation_source,
+                                "source_note": donation_note,
+                                "recorded_at": sydney_now(),
+                            },
+                            DONATION_FIELDS,
+                        )
+                        st.success(
+                            "Donation record added locally. Commit "
+                            "data/kew_campaign_donations.csv to preserve it in GitHub."
+                        )
+                        st.rerun()
+
+            with activity_tab:
+                st.markdown("##### Observable campaign presence")
+                st.caption(
+                    "Record one row per distinct event or observation. Separate scheduled events "
+                    "from campaign-reported completions and independent observations. Volunteer "
+                    "and door-contact counts are stored only when a source reports them; do not "
+                    "estimate counts from photographs or treat attendance as voter support."
+                )
+                activity_data = load_csv_or_empty(
+                    KEW_ACTIVITY_PATH, ACTIVITY_FIELDS
+                )
+                if not activity_data.empty:
+                    a1, a2, a3 = st.columns(3)
+                    a1.metric("Activity records", len(activity_data))
+                    a2.metric(
+                        "Candidates / groups represented",
+                        activity_data["candidate_name"].nunique()
+                    )
+                    a3.metric(
+                        "Completed or observed records",
+                        int(activity_data["activity_status"].isin([
+                            "Campaign-reported completed",
+                            "Independently observed",
+                            "Third-party reported",
+                        ]).sum())
+                    )
+                    presence_counts = (
+                        activity_data.groupby(
+                            ["candidate_name", "activity_type"]
+                        ).size().unstack(fill_value=0)
+                    )
+                    st.markdown("**Recorded activity by candidate and type**")
+                    st.bar_chart(presence_counts)
+                    activity_display = activity_data.sort_values(
+                        "activity_date", ascending=False
+                    )[
+                        [
+                            "activity_date", "candidate_name", "party",
+                            "activity_type", "activity_status", "location_suburb",
+                            "volunteers_reported", "doors_contacted_reported",
+                            "source_type", "source_url", "evidence_note"
+                        ]
+                    ].rename(columns={
+                        "activity_date": "Activity date",
+                        "candidate_name": "Candidate / group",
+                        "party": "Party",
+                        "activity_type": "Activity",
+                        "activity_status": "Evidence status",
+                        "location_suburb": "Suburb",
+                        "volunteers_reported": "Volunteers (reported)",
+                        "doors_contacted_reported": "Doors contacted (reported)",
+                        "source_type": "Source type",
+                        "source_url": "Source",
+                        "evidence_note": "Evidence note",
+                    })
+                    st.dataframe(
+                        activity_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Source": st.column_config.LinkColumn(
+                                "Source", display_text="Open source ↗"
+                            )
+                        },
+                    )
+                else:
+                    st.info(
+                        "No campaign activity has been recorded yet. Missing observations do not "
+                        "mean a candidate has no campaign activity."
+                    )
+
+                with st.expander("Record a campaign activity observation"):
+                    with st.form("kew_add_activity_form"):
+                        activity_candidate = st.selectbox(
+                            "Candidate / campaign",
+                            candidate_options + ["Party / multi-candidate campaign"],
+                        )
+                        activity_party = (
+                            str(KEW_CANDIDATES.loc[
+                                KEW_CANDIDATES["candidate_name"] == activity_candidate,
+                                "party"
+                            ].iloc[0])
+                            if not KEW_CANDIDATES.empty and activity_candidate in candidate_options
+                            else "Multiple / statewide"
+                        )
+                        activity_date_value = st.date_input(
+                            "Activity date", value=LOCAL_TODAY, key="campaign_activity_date"
+                        )
+                        activity_kind = st.selectbox(
+                            "Activity type",
+                            [
+                                "Door-knocking session",
+                                "Street stall",
+                                "Shopping-strip visit",
+                                "Community event / forum",
+                                "Volunteer mobilisation",
+                                "Campaign signage / material",
+                                "Paid advertising / mail",
+                                "Other campaign appearance",
+                            ],
+                        )
+                        activity_status = st.selectbox(
+                            "What does the evidence establish?",
+                            [
+                                "Scheduled / announced",
+                                "Campaign-reported completed",
+                                "Independently observed",
+                                "Third-party reported",
+                            ],
+                        )
+                        activity_suburb = st.text_input("Suburb / locality")
+                        activity_location = st.text_input(
+                            "Specific location (optional)"
+                        )
+                        volunteers_value = st.text_input(
+                            "Volunteers present (exact reported number; optional)"
+                        )
+                        doors_value = st.text_input(
+                            "Doors contacted (exact reported number; optional)"
+                        )
+                        activity_source_type = st.selectbox(
+                            "Source type",
+                            [
+                                "Candidate / campaign post",
+                                "Local news / media report",
+                                "Personally observed",
+                                "Other public source",
+                            ],
+                        )
+                        activity_source_url = st.text_input("Source URL")
+                        activity_note = st.text_area(
+                            "Evidence note (what happened, who reported it, and what remains unknown)"
+                        )
+                        activity_submitted = st.form_submit_button(
+                            "Add campaign activity"
+                        )
+                    if activity_submitted:
+                        activity_id = (
+                            f"ACT-{activity_date_value.isoformat()}-"
+                            f"{len(activity_data) + 1:04d}"
+                        )
+                        append_csv_record(
+                            KEW_ACTIVITY_PATH,
+                            {
+                                "activity_id": activity_id,
+                                "activity_date": activity_date_value.isoformat(),
+                                "recorded_at": sydney_now(),
+                                "candidate_name": activity_candidate,
+                                "party": activity_party,
+                                "activity_type": activity_kind,
+                                "activity_status": activity_status,
+                                "location_suburb": activity_suburb,
+                                "location_detail": activity_location,
+                                "volunteers_reported": volunteers_value.strip(),
+                                "doors_contacted_reported": doors_value.strip(),
+                                "source_type": activity_source_type,
+                                "source_url": activity_source_url,
+                                "evidence_note": activity_note,
+                            },
+                            ACTIVITY_FIELDS,
+                        )
+                        st.success(
+                            "Campaign activity added locally. Commit "
+                            "data/kew_campaign_activity.csv to preserve it in GitHub."
+                        )
+                        st.rerun()
+
+            with market_tab:
+                st.markdown("##### Kalshi — Victorian state election market")
+                st.markdown(
+                    f"[Open the Kalshi market ↗]({KALSHI_EVENT_URL})"
+                )
+                st.caption(
+                    "This market concerns which party or coalition wins the most seats in "
+                    "the Victorian Legislative Assembly. It is a statewide signal, not a Kew "
+                    "candidate market. The tracker records individual contract bid/ask prices, "
+                    "last trade and liquidity; it does not force separate contract prices to sum to 100%."
+                )
+                if st.button(
+                    "Fetch and record latest Kalshi prices",
+                    key="fetch_kalshi_market_data",
+                ):
+                    try:
+                        kalshi_markets = fetch_kalshi_event_markets(
+                            KALSHI_EVENT_TICKER
+                        )
+                        market_rows = kalshi_market_snapshot_rows(
+                            kalshi_markets, KALSHI_EVENT_TICKER
+                        )
+                        for market_row in market_rows:
+                            append_csv_record(
+                                KALSHI_SNAPSHOTS_PATH,
+                                market_row,
+                                KALSHI_MARKET_FIELDS,
+                            )
+                        st.success(
+                            f"Recorded {len(market_rows)} Kalshi market contracts. "
+                            "Commit data/kalshi_market_snapshots.csv to preserve the history."
+                        )
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(
+                            f"Kalshi data could not be retrieved: {type(exc).__name__}: {exc}"
+                        )
+
+                market_data = load_csv_or_empty(
+                    KALSHI_SNAPSHOTS_PATH, KALSHI_MARKET_FIELDS
+                )
+                if not market_data.empty:
+                    for column in [
+                        "implied_chance_pct", "yes_bid_dollars", "yes_ask_dollars",
+                        "last_price_dollars", "bid_ask_spread_cents",
+                        "volume", "volume_24h", "open_interest", "liquidity_dollars"
+                    ]:
+                        market_data[column] = pd.to_numeric(
+                            market_data[column], errors="coerce"
+                        )
+                    market_data["snapshot_at_parsed"] = pd.to_datetime(
+                        market_data["snapshot_at"], errors="coerce"
+                    )
+                    latest_markets = (
+                        market_data.dropna(subset=["snapshot_at_parsed"])
+                        .sort_values("snapshot_at_parsed")
+                        .groupby("market_ticker", as_index=False)
+                        .tail(1)
+                        .sort_values("market_outcome")
+                    )
+                    m1, m2 = st.columns(2)
+                    m1.metric("Market contracts tracked", len(latest_markets))
+                    m2.metric(
+                        "Last market snapshot",
+                        market_data["snapshot_at"].max()[:16].replace("T", " ")
+                    )
+                    current_market_display = latest_markets[
+                        [
+                            "market_outcome", "implied_chance_pct",
+                            "yes_bid_dollars", "yes_ask_dollars",
+                            "bid_ask_spread_cents", "volume", "volume_24h",
+                            "open_interest"
+                        ]
+                    ].rename(columns={
+                        "market_outcome": "Outcome",
+                        "implied_chance_pct": "Midpoint / last price (%)",
+                        "yes_bid_dollars": "YES bid ($)",
+                        "yes_ask_dollars": "YES ask ($)",
+                        "bid_ask_spread_cents": "Spread (¢)",
+                        "volume": "Total volume",
+                        "volume_24h": "24h volume",
+                        "open_interest": "Open interest",
+                    })
+                    st.dataframe(
+                        current_market_display,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    market_history = market_data.dropna(
+                        subset=["snapshot_at_parsed", "implied_chance_pct"]
+                    ).pivot_table(
+                        index="snapshot_at_parsed",
+                        columns="market_outcome",
+                        values="implied_chance_pct",
+                        aggfunc="last",
+                    )
+                    if not market_history.empty:
+                        st.line_chart(market_history)
+                    st.caption(
+                        "Market price is a traded-market expectation, not a poll. A wide spread, "
+                        "low volume or low open interest indicates limited liquidity. Historical "
+                        "prices are only available from the first snapshot recorded by this tracker."
+                    )
+                else:
+                    st.info(
+                        "No Kalshi price snapshots have been recorded. Fetch the latest public "
+                        "market data to establish the first observation."
+                    )
+
+            with analyst_tab:
+                st.markdown("##### Antony Green and electoral analysis")
+                st.caption(
+                    "Curated notes preserve an analyst's published date, source and interpretation "
+                    "limits. These are analyst references, not automated polling data or a vote forecast."
+                )
+                analyst_data = load_csv_or_empty(
+                    ANTONY_GREEN_NOTES_PATH, ANALYST_FIELDS
+                )
+                if not analyst_data.empty:
+                    analyst_display = analyst_data.sort_values(
+                        "published_date", ascending=False
+                    )[
+                        [
+                            "published_date", "analyst", "title", "coverage",
+                            "analysis_type", "key_points", "interpretation_limit",
+                            "source_url"
+                        ]
+                    ].rename(columns={
+                        "published_date": "Published",
+                        "analyst": "Analyst",
+                        "title": "Article / analysis",
+                        "coverage": "Coverage",
+                        "analysis_type": "Type",
+                        "key_points": "Key points",
+                        "interpretation_limit": "Interpretation limit",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        analyst_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Source": st.column_config.LinkColumn(
+                                "Source", display_text="Read analysis ↗"
+                            )
+                        },
+                    )
+                else:
+                    st.info("No analyst notes have been recorded.")
+
+                with st.expander("Add an analyst article or update"):
+                    with st.form("kew_add_analyst_note_form"):
+                        analyst_name = st.text_input(
+                            "Analyst / source", value="Antony Green"
+                        )
+                        analyst_date = st.date_input(
+                            "Publication date", value=LOCAL_TODAY, key="analyst_date"
+                        )
+                        analyst_title = st.text_input("Article title")
+                        analyst_coverage = st.selectbox(
+                            "Geographic coverage",
+                            [
+                                "Kew electorate",
+                                "Victoria statewide",
+                                "Multiple Victorian electorates",
+                                "National / other",
+                            ],
+                        )
+                        analyst_type = st.selectbox(
+                            "Analysis type",
+                            [
+                                "Electoral pendulum / historical margin",
+                                "Preference flow analysis",
+                                "District-level geographic analysis",
+                                "Candidate-field analysis",
+                                "Polling analysis",
+                                "Election system / count methodology",
+                                "Other expert commentary",
+                            ],
+                        )
+                        analyst_points = st.text_area("Key points from the article")
+                        analyst_limit = st.text_area(
+                            "How should this evidence be interpreted / limited?"
+                        )
+                        analyst_url = st.text_input("Source URL")
+                        analyst_submitted = st.form_submit_button(
+                            "Add analyst reference"
+                        )
+                    if analyst_submitted:
+                        analyst_id = (
+                            f"ANL-{analyst_date.isoformat()}-"
+                            f"{len(analyst_data) + 1:04d}"
+                        )
+                        append_csv_record(
+                            ANTONY_GREEN_NOTES_PATH,
+                            {
+                                "record_id": analyst_id,
+                                "published_date": analyst_date.isoformat(),
+                                "analyst": analyst_name,
+                                "title": analyst_title,
+                                "coverage": analyst_coverage,
+                                "analysis_type": analyst_type,
+                                "key_points": analyst_points,
+                                "interpretation_limit": analyst_limit,
+                                "source_url": analyst_url,
+                                "review_status": "Manually reviewed",
+                                "recorded_at": sydney_now(),
+                            },
+                            ANALYST_FIELDS,
+                        )
+                        st.success(
+                            "Analyst reference added locally. Commit "
+                            "data/antony_green_notes.csv to preserve it in GitHub."
+                        )
+                        st.rerun()
 
             st.markdown("#### Polling trends and Kew forecast workspace")
             st.caption(
@@ -1475,5 +2051,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.5.2 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.6.0 · Built with Streamlit · No personal voter data is collected."
 )
