@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+from news_monitor import collect_news
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
 DISTRICTS_PATH = DATA_DIR / "vic_districts_2026.csv"
 OBSERVATIONS_PATH = DATA_DIR / "kew_seed_observations.csv"
+NEWS_PATH = DATA_DIR / "news_articles.csv"
 RESULTS_PATH = DATA_DIR / "vic_2022_district_results.csv"
 
 st.set_page_config(
@@ -60,8 +62,33 @@ def load_observations():
             observations[column] = pd.to_numeric(observations[column], errors="coerce")
     return observations.sort_values(["date_sort", "issue"], ascending=[False, True])
 
+
+@st.cache_data
+def load_news_articles():
+    """Load article metadata and reviewer annotations; no automated sentiment scores."""
+    if not NEWS_PATH.exists():
+        return pd.DataFrame()
+    articles = pd.read_csv(NEWS_PATH, keep_default_na=False)
+    required = {
+        "article_id", "title", "publisher", "published_at", "source_url",
+        "summary", "geography_match", "geography_review", "issue_suggested",
+        "issue_reviewed", "article_tone", "public_sentiment_evidence",
+        "review_status"
+    }
+    missing = required.difference(articles.columns)
+    if missing:
+        st.error("The news CSV is missing required columns: " + ", ".join(sorted(missing)))
+        return pd.DataFrame()
+    articles["published_sort"] = pd.to_datetime(
+        articles["published_at"], errors="coerce", utc=True
+    )
+    return articles.sort_values(
+        ["published_sort", "title"], ascending=[False, True], na_position="last"
+    )
+
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
 OBSERVATIONS = load_observations()
+NEWS_ARTICLES = load_news_articles()
 
 st.title("Australian Electoral Sentiment Tracker")
 st.caption("Research prototype · Victoria 2026 live case · Federal and NSW expansion planned")
@@ -365,11 +392,223 @@ if jurisdiction == "Victoria":
                     )
                     st.bar_chart(issue_counts)
 
+            st.markdown("#### Local news monitoring")
+            st.caption(
+                "News items are discovery leads, not measures of voter opinion. "
+                "The collector stores article metadata and short snippets only; every item "
+                "requires geographic and editorial review before analysis."
+            )
+
+            # Collect on demand so a page refresh does not repeatedly query external services.
+            collect_col, source_col = st.columns([1, 2])
+            with collect_col:
+                if st.button("Collect latest local news", key="collect_kew_news", use_container_width=True):
+                    with st.spinner("Checking local news sources and RSS searches..."):
+                        try:
+                            collection_result = collect_news(NEWS_PATH)
+                            st.session_state["last_news_collection"] = collection_result
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(f"News collection failed: {type(exc).__name__}: {exc}")
+            with source_col:
+                st.caption(
+                    "Sources: Boroondara newsroom, Google News RSS searches, "
+                    "Eastsider News discovery and Victoria's Big Build."
+                )
+
+            if "last_news_collection" in st.session_state:
+                result = st.session_state["last_news_collection"]
+                st.success(
+                    f"Collection complete: {result['new_items']} new items; "
+                    f"{result['total_items']} stored; "
+                    f"{result['feeds_succeeded']}/{result['feeds_attempted']} feeds succeeded."
+                )
+                if result["errors"]:
+                    with st.expander("Collection warnings"):
+                        for error in result["errors"]:
+                            st.write("- " + error)
+
+            news_df = NEWS_ARTICLES.copy()
+            if news_df.empty:
+                st.info(
+                    "No news leads are stored yet. Select 'Collect latest local news' "
+                    "to start a collection."
+                )
+            else:
+                relevant_scope_options = ["All local leads"] + sorted(
+                    news_df["geography_match"].dropna().unique().tolist()
+                )
+                nf1, nf2 = st.columns(2)
+                with nf1:
+                    geography_filter = st.selectbox(
+                        "Geographic match", relevant_scope_options, key="news_geography_filter"
+                    )
+                with nf2:
+                    review_filter = st.selectbox(
+                        "Review status",
+                        ["All", "Needs review", "Reviewed"],
+                        key="news_review_filter",
+                    )
+
+                visible_news = news_df.copy()
+                if geography_filter != "All local leads":
+                    visible_news = visible_news[
+                        visible_news["geography_match"] == geography_filter
+                    ]
+                if review_filter != "All":
+                    visible_news = visible_news[
+                        visible_news["review_status"] == review_filter
+                    ]
+
+                news_a, news_b, news_c = st.columns(3)
+                news_a.metric("News leads stored", len(news_df))
+                news_b.metric("Shown after filters", len(visible_news))
+                news_c.metric(
+                    "Awaiting review",
+                    int(news_df["review_status"].eq("Needs review").sum()),
+                )
+
+                if not visible_news.empty:
+                    news_table = visible_news[
+                        [
+                            "published_at", "title", "publisher",
+                            "geography_match", "issue_suggested",
+                            "review_status", "source_url"
+                        ]
+                    ].rename(columns={
+                        "published_at": "Published",
+                        "title": "Headline",
+                        "publisher": "Publisher",
+                        "geography_match": "Geographic match",
+                        "issue_suggested": "Suggested issue",
+                        "review_status": "Review status",
+                        "source_url": "Article link",
+                    })
+                    st.dataframe(
+                        news_table,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Article link": st.column_config.LinkColumn(
+                                "Article link", display_text="Open article ↗"
+                            )
+                        },
+                    )
+                else:
+                    st.info("No news leads match the selected filters.")
+
+                st.markdown("##### Review a news item")
+                review_ids = visible_news["article_id"].tolist()
+                if review_ids:
+                    review_id = st.selectbox(
+                        "Choose an article",
+                        review_ids,
+                        format_func=lambda article_id: (
+                            str(news_df.loc[news_df["article_id"] == article_id, "published_at"].iloc[0])[:10]
+                            + " · "
+                            + str(news_df.loc[news_df["article_id"] == article_id, "publisher"].iloc[0])
+                            + " · "
+                            + str(news_df.loc[news_df["article_id"] == article_id, "title"].iloc[0])[:85]
+                        ),
+                        key="news_review_article",
+                    )
+                    selected_article = news_df.loc[
+                        news_df["article_id"] == review_id
+                    ].iloc[0]
+
+                    with st.expander("Read summary and review fields", expanded=True):
+                        st.write(selected_article["summary"])
+                        st.markdown(
+                            f"[Open original article ↗]({selected_article['source_url']})"
+                        )
+                        st.caption(
+                            "The automated issue label is only a suggestion. "
+                            "Do not infer resident opinion from article tone."
+                        )
+
+                        with st.form("save_news_review"):
+                            geo_choices = [
+                                "Unreviewed", "Kew-specific", "Kew-area context",
+                                "Boroondara-wide context", "Not relevant to Kew"
+                            ]
+                            geo_current = selected_article.get("geography_review", "Unreviewed")
+                            geo_index = geo_choices.index(geo_current) if geo_current in geo_choices else 0
+                            geography_review = st.selectbox(
+                                "Geographic relevance", geo_choices, index=geo_index
+                            )
+
+                            issue_choices = [
+                                "Unreviewed", "Planning and housing", "Transport and roads",
+                                "Construction and disruption", "Environment and open space",
+                                "Education", "Health and community services",
+                                "Sport and recreation", "Council and local services",
+                                "Crime and public safety", "Politics and election",
+                                "Other / unclassified", "Not relevant"
+                            ]
+                            issue_current = selected_article.get("issue_reviewed", "") or "Unreviewed"
+                            issue_index = issue_choices.index(issue_current) if issue_current in issue_choices else 0
+                            issue_reviewed = st.selectbox(
+                                "Issue classification", issue_choices, index=issue_index
+                            )
+
+                            tone_choices = [
+                                "Not assessed", "Positive", "Negative", "Mixed",
+                                "Neutral", "Factual / not applicable"
+                            ]
+                            tone_current = selected_article.get("article_tone", "Not assessed")
+                            tone_index = tone_choices.index(tone_current) if tone_current in tone_choices else 0
+                            article_tone = st.selectbox(
+                                "Article framing / tone", tone_choices, index=tone_index
+                            )
+
+                            public_choices = [
+                                "Not assessed", "No explicit public sentiment",
+                                "Positive", "Negative", "Mixed", "Neutral / unclear"
+                            ]
+                            public_current = selected_article.get(
+                                "public_sentiment_evidence", "Not assessed"
+                            )
+                            public_index = public_choices.index(public_current) if public_current in public_choices else 0
+                            public_sentiment = st.selectbox(
+                                "Public sentiment explicitly evidenced in article",
+                                public_choices,
+                                index=public_index,
+                            )
+                            sentiment_target = st.text_input(
+                                "What is that sentiment about?",
+                                value=str(selected_article.get("sentiment_target", "")),
+                            )
+                            review_notes = st.text_area(
+                                "Review notes",
+                                value=str(selected_article.get("review_notes", "")),
+                            )
+                            submitted = st.form_submit_button("Save article review")
+                            if submitted:
+                                row_index = news_df.index[
+                                    news_df["article_id"] == review_id
+                                ][0]
+                                news_df.loc[row_index, "geography_review"] = geography_review
+                                news_df.loc[row_index, "issue_reviewed"] = (
+                                    "" if issue_reviewed == "Unreviewed" else issue_reviewed
+                                )
+                                news_df.loc[row_index, "article_tone"] = article_tone
+                                news_df.loc[row_index, "public_sentiment_evidence"] = public_sentiment
+                                news_df.loc[row_index, "sentiment_target"] = sentiment_target
+                                news_df.loc[row_index, "review_notes"] = review_notes
+                                news_df.loc[row_index, "review_status"] = "Reviewed"
+                                news_df.drop(columns=["published_sort"], errors="ignore").to_csv(
+                                    NEWS_PATH, index=False
+                                )
+                                st.cache_data.clear()
+                                st.success("Review saved to data/news_articles.csv.")
+                                st.rerun()
+
             st.markdown("#### Research status")
             st.write(
                 "- Historical vote baseline: awaiting verified district result import\n"
                 "- Search interest: not connected\n"
-                "- Local news feed: manual seed observations only\n"
+                "- Local news: RSS and newsroom collection enabled; manual review required\n"
                 "- Public discussion: not connected\n"
                 "- Model validation: not started"
             )
@@ -424,5 +663,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.2.3 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.3.0 · Built with Streamlit · No personal voter data is collected."
 )
