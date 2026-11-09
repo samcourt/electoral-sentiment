@@ -54,7 +54,7 @@ def load_observations():
     # Optional structured consultation measures; blanks remain missing, never zero.
     for column in [
         "support_pct", "oppose_pct", "conditional_support_pct", "unsure_pct",
-        "response_count", "survey_count", "written_submissions", "engagement_count"
+        "response_count", "survey_count", "written_submissions", "engagement_count", "page_views"
     ]:
         if column in observations.columns:
             observations[column] = pd.to_numeric(observations[column], errors="coerce")
@@ -223,7 +223,7 @@ if jurisdiction == "Victoria":
                     response_columns = [
                         "support_pct", "oppose_pct", "conditional_support_pct",
                         "unsure_pct", "response_count", "survey_count",
-                        "written_submissions", "engagement_count"
+                        "written_submissions", "engagement_count", "page_views"
                     ]
                     available_response_columns = [
                         column for column in response_columns if column in filtered.columns
@@ -247,7 +247,8 @@ if jurisdiction == "Victoria":
                                 "response_count": "Recorded responses",
                                 "survey_count": "Survey participants",
                                 "written_submissions": "Written submissions",
-                                "engagement_count": "Page / map engagement",
+                                "engagement_count": "Recorded contributions",
+                                "page_views": "Consultation page views",
                                 "source_url": "Source link",
                             })
                             st.dataframe(
@@ -315,7 +316,8 @@ if jurisdiction == "Victoria":
                                 ("Recorded responses", "response_count", ""),
                                 ("Survey participants", "survey_count", ""),
                                 ("Written submissions", "written_submissions", ""),
-                                ("Engagement count", "engagement_count", ""),
+                                ("Recorded contributions", "engagement_count", ""),
+                                ("Consultation page views", "page_views", ""),
                             ]
                             visible_metrics = [
                                 (label, item[column], suffix)
@@ -422,5 +424,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.2.2 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.2.3 · Built with Streamlit · No personal voter data is collected."
 )
