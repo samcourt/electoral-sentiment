@@ -629,8 +629,8 @@ if jurisdiction == "Victoria":
                     comparison_map = {
                         "Jess Wilson": ("Jess Wilson", "direct poll anchor"),
                         "Sophie Torney": ("Sophie Torney", "direct poll anchor"),
-                        "David Sun": ("Lucy Skelton", "2022 Labor candidate proxy"),
-                        "David Laird": (None, "new Kew One Nation candidate"),
+                        "David Sun": ("Lucy Skelton", "2022 Labor candidate proxy; March poll is party-only"),
+                        "David Laird": (None, "March poll is One Nation party-only; candidate not yet selected"),
                         "Jackie Carter": ("Jackie Carter", "same party/candidate"),
                         "Ann Seeley": ("Ann Seeley", "same candidate"),
                         "Juliet Hales": ("Ruby Schofield", "same party proxy"),
@@ -653,7 +653,7 @@ if jurisdiction == "Victoria":
                         comparison_rows.append({
                             "Candidate": name,
                             "2022 Kew primary (%)": historical_value,
-                            "March 2026 Kew poll (%)": march_by_name.get(name),
+                            "March 2026 poll / party figure (%)": march_by_name.get(name),
                             "Current scenario (%)": item["primary_estimate_pct"],
                             "Comparison note": comparison_note,
                         })
@@ -662,11 +662,16 @@ if jurisdiction == "Victoria":
                     checkpoint_chart = checkpoint_df.set_index("Candidate")[
                         [
                             "2022 Kew primary (%)",
-                            "March 2026 Kew poll (%)",
+                            "March 2026 poll / party figure (%)",
                             "Current scenario (%)",
                         ]
                     ]
                     st.bar_chart(checkpoint_chart)
+                    st.dataframe(
+                        checkpoint_df,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
                     st.caption(
                         "The March poll did not report every candidate. 2022 figures for a "
                         "different candidate of the same party are labelled as proxies. "
