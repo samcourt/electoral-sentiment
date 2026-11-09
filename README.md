@@ -83,7 +83,7 @@ The campaign-signal workspace adds four distinct signal collections. Donation an
 
 ### Disclosed donations
 
-`data/vic_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. Despite its legacy filename, the ledger's `electorate` field supports all Victorian Legislative Assembly districts. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
+`data/vic_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. The ledger's `electorate` field supports all Victorian Legislative Assembly districts. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. Individual donor names are not stored.
 
 The VEC says donations of $1,290 or more must generally be disclosed within 21 days. This is a partial register: smaller donations are not disclosed, records may appear with a delay, and the ledger does not reveal all money or in-kind support available to a campaign. Party or associated-entity donations cannot automatically be assigned to an individual electorate or candidate. Donations indicate disclosed financial support/capacity, not voter support or campaign effectiveness.
 
