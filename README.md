@@ -5,7 +5,8 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 ## What's included
 
 - Streamlit dashboard with a searchable register of Victoria's 88 current Legislative Assembly districts.
-- Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail and monthly evidence counts.
+- Complete 88-district Victorian Legislative Assembly register in `data/vic_districts_2026.csv`.
+- Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail and monthly evidence counts. The app now opens on Kew by default so the pilot observations are visible immediately.
 - Victoria's eight Legislative Council regions as a separate view.
 - Official 2022 statewide first-preference baseline (historical context only).
 - Canonical PostgreSQL schema for jurisdictions, election cycles, electorates, election results, observations, sentiment classifications and weekly indicators.
