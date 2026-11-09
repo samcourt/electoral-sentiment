@@ -11,7 +11,11 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Five manually sourced Kew news leads in `data/news_articles.csv` to seed the review queue.
 - Official 2026 Kew candidate register in `data/kew_2026_candidates.csv` (10 candidates, VEC ballot order).
 - Official 2022 Kew first-preference and final preference-distribution baseline in `data/kew_2022_results.csv`.
-- One published March 2026 Kew uComms poll record in `data/kew_polls.csv`, including sample size, commissioning disclosure and missing-methodology caveats.
+- One published March 2026 Kew uComms poll record in `data/kew_polls.csv`, including sample size, commissioning disclosure, a 36%/38% reported discrepancy for Jess Wilson and missing-methodology caveats.
+- Dated Victorian statewide polling ledger in `data/vic_state_polls_2026.csv`, including eligibility flags and quality weights.
+- Kew first-preference scenario model in `kew_forecast.py`, with a conditional Coalition–Labor uniform-swing scenario.
+- Separately-labelled external Kew forecast and final-two benchmarks in `data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv`.
+- Dated model snapshots in `data/kew_forecast_snapshots.csv`.
 - Candidate-specific Google News discovery queries and an editorial review form that links news items to candidates and source-attributed public views.
 - Candidate coverage time series based only on reviewed, Kew-specific news items; coverage volume is not a popularity or voting-intention measure.
 - News source register in `data/news_sources.csv`, including coverage and limitations.
@@ -22,7 +26,7 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - VEC workbook ingestion helper that downloads and inspects the official 2022 district-results workbook without guessing its internal schema.
 - Source register and data-quality notes.
 
-**Important:** no live sentiment feed, district-level 2022 result import, or boundary geometry is included yet. The Kew observations are a manually curated seed dataset; some are reports of constituent concerns or consultation summaries rather than direct, representative resident measurements. Consultation response percentages are shown separately by proposal and are never pooled or averaged. The app explicitly labels those gaps. It does not create synthetic scores or infer voting intention.
+**Important:** there is no continuous automated sentiment feed, district-level 2022 result import, or boundary geometry yet. Local news collection is on-demand and requires human review. The Kew observations are a manually curated seed dataset; some are reports of constituent concerns or consultation summaries rather than direct, representative resident measurements. Consultation response percentages are shown separately by proposal and are never pooled or averaged. The app does not create synthetic sentiment scores. Forecast outputs are explicitly labelled exploratory scenarios, not calibrated predictions.
 
 ## Run locally
 
@@ -46,11 +50,11 @@ The default in-project average uses the latest eligible poll from each pollster 
 
 ### Kew first-preference scenario
 
-`kew_forecast.py` starts with the March 2026 uComms Kew poll for Jess Wilson, Sophie Torney, Labor and One Nation, then adjusts the relevant party candidates by the change between the March Resolve Victorian component poll and the current weighted statewide poll average. The Greens candidate is anchored to the 2022 Kew Greens result and adjusted by statewide Greens polling change. Other candidates use historical Kew results or clearly-labelled statewide proxies where necessary.
+`kew_forecast.py` starts with the March 2026 uComms Kew poll. Jess Wilson and Sophie Torney were named in the reported options; Labor and One Nation were party-intention options (the One Nation candidate had not yet been selected), not personal candidate measures. The model then adjusts the relevant party candidates by the change between the March Resolve Victorian component poll and the current weighted statewide poll average. The Greens candidate is anchored to the 2022 Kew Greens result and adjusted by statewide Greens polling change. Other candidates use historical Kew results or clearly-labelled statewide proxies where necessary.
 
 This is a deliberately simple scenario rule, not a fitted predictive model. The uComms poll was commissioned by Sophie Torney's campaign, is several months old, has incomplete reported candidate options, and has a published discrepancy for Jess Wilson (38% in The Poll Bludger versus 36% in a news.com.au report). That discrepancy is preserved in `data/kew_polls.csv`. Candidates without a defensible baseline remain unestimated; the residual vote is shown as **Unallocated / unmodelled vote** rather than being silently assigned to them.
 
-The pass-through slider allows the user to test how much statewide polling movement is assumed to transfer to Kew. Its 0.5×–1.5× sensitivity range is not a statistical confidence interval.
+The pass-through slider allows the user to test how much statewide polling movement is assumed to transfer to Kew. Candidate vote checkpoints compare 2022 actual results, the March local poll and the current scenario, while flagging candidate/party proxies. Its 0.5×–1.5× sensitivity range is not a statistical confidence interval.
 
 ### Conditional Coalition–Labor scenario
 
