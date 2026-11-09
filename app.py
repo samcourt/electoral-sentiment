@@ -132,10 +132,9 @@ def load_kew_polls():
     if not KEW_POLLS_PATH.exists():
         return pd.DataFrame()
     polls = pd.read_csv(KEW_POLLS_PATH, keep_default_na=False)
-    if "reported_pct" in polls.columns:
-        polls["reported_pct"] = pd.to_numeric(polls["reported_pct"], errors="coerce")
-    if "sample_size" in polls.columns:
-        polls["sample_size"] = pd.to_numeric(polls["sample_size"], errors="coerce")
+    for column in ["reported_pct", "alternate_reported_pct", "sample_size"]:
+        if column in polls.columns:
+            polls[column] = pd.to_numeric(polls[column], errors="coerce")
     return polls
 
 
@@ -364,12 +363,17 @@ if jurisdiction == "Victoria":
                         f"n={int(poll_meta['sample_size']) if str(poll_meta['sample_size']).strip() else 'not stated'} · "
                         f"published {poll_meta['publication_date']} · commissioned by {poll_meta['commissioned_by']}"
                     )
-                    poll_display = KEW_POLLS[
-                        ["option_label", "party_or_type", "reported_pct"]
-                    ].rename(columns={
+                    poll_columns = [
+                        column for column in [
+                            "option_label", "party_or_type", "reported_pct",
+                            "alternate_reported_pct"
+                        ] if column in KEW_POLLS.columns
+                    ]
+                    poll_display = KEW_POLLS[poll_columns].rename(columns={
                         "option_label": "Reported option",
                         "party_or_type": "Party / type",
-                        "reported_pct": "Reported first-preference intention (%)",
+                        "reported_pct": "Poll Bludger reported (%)",
+                        "alternate_reported_pct": "Alternate media report (%)",
                     })
                     st.dataframe(
                         poll_display,
@@ -606,6 +610,69 @@ if jurisdiction == "Victoria":
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                    # Compare observed checkpoints with the current scenario, without
+                    # pretending that unlike candidate contests are directly equivalent.
+                    historical_primary = KEW_HISTORICAL_RESULTS[
+                        KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
+                    ].copy()
+                    historical_by_name = dict(zip(
+                        historical_primary["candidate_name"],
+                        pd.to_numeric(historical_primary["share_pct"], errors="coerce")
+                    ))
+                    march_by_name = {
+                        "Jess Wilson": 38.0,
+                        "Sophie Torney": 17.0,
+                        "David Sun": 13.5,
+                        "David Laird": 13.0,
+                    }
+                    comparison_map = {
+                        "Jess Wilson": ("Jess Wilson", "direct poll anchor"),
+                        "Sophie Torney": ("Sophie Torney", "direct poll anchor"),
+                        "David Sun": ("Lucy Skelton", "2022 Labor candidate proxy"),
+                        "David Laird": (None, "new Kew One Nation candidate"),
+                        "Jackie Carter": ("Jackie Carter", "same party/candidate"),
+                        "Ann Seeley": ("Ann Seeley", "same candidate"),
+                        "Juliet Hales": ("Ruby Schofield", "same party proxy"),
+                        "Samantha Lincolne": (None, "statewide party proxy"),
+                        "Finlay Davis": ("Finlay Davis", "same candidate"),
+                        "Man Liang": (None, "no candidate-specific baseline"),
+                    }
+                    comparison_rows = []
+                    for _, item in candidate_scenario.iterrows():
+                        name = item["candidate_name"]
+                        if name == "Unallocated / unmodelled vote":
+                            continue
+                        historical_name, comparison_note = comparison_map.get(
+                            name, (None, "no comparable baseline")
+                        )
+                        historical_value = (
+                            historical_by_name.get(historical_name)
+                            if historical_name else None
+                        )
+                        comparison_rows.append({
+                            "Candidate": name,
+                            "2022 Kew primary (%)": historical_value,
+                            "March 2026 Kew poll (%)": march_by_name.get(name),
+                            "Current scenario (%)": item["primary_estimate_pct"],
+                            "Comparison note": comparison_note,
+                        })
+                    st.markdown("##### Candidate vote checkpoints")
+                    checkpoint_df = pd.DataFrame(comparison_rows)
+                    checkpoint_chart = checkpoint_df.set_index("Candidate")[
+                        [
+                            "2022 Kew primary (%)",
+                            "March 2026 Kew poll (%)",
+                            "Current scenario (%)",
+                        ]
+                    ]
+                    st.bar_chart(checkpoint_chart)
+                    st.caption(
+                        "The March poll did not report every candidate. 2022 figures for a "
+                        "different candidate of the same party are labelled as proxies. "
+                        "Blank values mean no comparable measurement was found."
+                    )
+
                     st.caption(
                         "Sensitivity low/high shows the effect of changing statewide polling "
                         "pass-through from 0.5× to 1.5×. It is not a statistical confidence interval. "
@@ -1400,5 +1467,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.5.0 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.5.1 · Built with Streamlit · No personal voter data is collected."
 )
