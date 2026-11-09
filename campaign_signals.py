@@ -27,13 +27,13 @@ VEC_DONATIONS_GUIDANCE_URL = (
 DONATION_FIELDS = [
     "record_id", "donation_date", "disclosure_date", "recipient_name",
     "recipient_type", "donor_category", "amount_aud", "geographic_scope",
-    "source_url", "source_note", "recorded_at",
+    "source_url", "source_note", "recorded_at", "electorate",
 ]
 ACTIVITY_FIELDS = [
     "activity_id", "activity_date", "recorded_at", "candidate_name", "party",
     "activity_type", "activity_status", "location_suburb", "location_detail",
     "volunteers_reported", "doors_contacted_reported", "source_type",
-    "source_url", "evidence_note",
+    "source_url", "evidence_note", "electorate",
 ]
 MARKET_FIELDS = [
     "snapshot_at", "event_ticker", "market_ticker", "market_title",
