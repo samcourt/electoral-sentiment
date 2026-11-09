@@ -51,6 +51,13 @@ def load_observations():
 
     observations["date_sort"] = observations["observation_date"].apply(parse_observation_date)
     observations["source_url"] = observations["source_url"].astype(str)
+    # Optional structured consultation measures; blanks remain missing, never zero.
+    for column in [
+        "support_pct", "oppose_pct", "conditional_support_pct", "unsure_pct",
+        "response_count", "survey_count", "written_submissions", "engagement_count"
+    ]:
+        if column in observations.columns:
+            observations[column] = pd.to_numeric(observations[column], errors="coerce")
     return observations.sort_values(["date_sort", "issue"], ascending=[False, True])
 
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
@@ -211,6 +218,54 @@ if jurisdiction == "Victoria":
                 )
 
                 if not filtered.empty:
+                    # Show published response distributions as individual consultation results.
+                    # We do not average across unrelated proposals or treat these as polling.
+                    response_columns = [
+                        "support_pct", "oppose_pct", "conditional_support_pct",
+                        "unsure_pct", "response_count", "survey_count",
+                        "written_submissions", "engagement_count"
+                    ]
+                    available_response_columns = [
+                        column for column in response_columns if column in filtered.columns
+                    ]
+                    if available_response_columns:
+                        has_reported_figures = filtered[available_response_columns].notna().any(axis=1)
+                        response_rows = filtered.loc[has_reported_figures].copy()
+                        if not response_rows.empty:
+                            st.markdown("#### Published consultation response figures")
+                            response_display = response_rows[
+                                ["observation_date", "issue", "geographic_scope"] +
+                                available_response_columns + ["source_url"]
+                            ].rename(columns={
+                                "observation_date": "Consultation period",
+                                "issue": "Issue / proposal",
+                                "geographic_scope": "Geographic scope",
+                                "support_pct": "Support (%)",
+                                "oppose_pct": "Oppose / not supportive (%)",
+                                "conditional_support_pct": "Support with conditions (%)",
+                                "unsure_pct": "Unsure (%)",
+                                "response_count": "Recorded responses",
+                                "survey_count": "Survey participants",
+                                "written_submissions": "Written submissions",
+                                "engagement_count": "Page / map engagement",
+                                "source_url": "Source link",
+                            })
+                            st.dataframe(
+                                response_display,
+                                use_container_width=True,
+                                hide_index=True,
+                                column_config={
+                                    "Source link": st.column_config.LinkColumn(
+                                        "Source link", display_text="Open source ↗"
+                                    )
+                                },
+                            )
+                            st.caption(
+                                "Figures are reported separately for each consultation. "
+                                "They are not pooled or averaged: each consultation had its own "
+                                "question, eligibility rules and self-selected participants."
+                            )
+
                     display = filtered[
                         [
                             "observation_date", "issue", "sentiment_label",
@@ -252,6 +307,28 @@ if jurisdiction == "Victoria":
                                 f"Evidence: {item['evidence_class'].replace('_', ' ')} · "
                                 f"Confidence: {item['confidence']}"
                             )
+                            metric_items = [
+                                ("Support", "support_pct", "%"),
+                                ("Oppose / not supportive", "oppose_pct", "%"),
+                                ("Support with conditions", "conditional_support_pct", "%"),
+                                ("Unsure", "unsure_pct", "%"),
+                                ("Recorded responses", "response_count", ""),
+                                ("Survey participants", "survey_count", ""),
+                                ("Written submissions", "written_submissions", ""),
+                                ("Engagement count", "engagement_count", ""),
+                            ]
+                            visible_metrics = [
+                                (label, item[column], suffix)
+                                for label, column, suffix in metric_items
+                                if column in item.index and pd.notna(item[column])
+                            ]
+                            if visible_metrics:
+                                metric_columns = st.columns(min(4, len(visible_metrics)))
+                                for index, (label, value, suffix) in enumerate(visible_metrics):
+                                    metric_columns[index % len(metric_columns)].metric(
+                                        label,
+                                        f"{value:g}{suffix}" if suffix else f"{int(value):,}"
+                                    )
                             st.write("**Geographic scope:** " + item["geographic_scope"])
                             st.write("**What this represents:** " + item["representativeness"])
                             st.write("**Target:** " + item.get("sentiment_target", "Not specified"))
@@ -345,5 +422,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.2 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.2.2 · Built with Streamlit · No personal voter data is collected."
 )
