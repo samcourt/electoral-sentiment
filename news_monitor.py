@@ -22,6 +22,7 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
+CANDIDATES_PATH = DATA_DIR / "kew_2026_candidates.csv"
 ARTICLES_PATH = DATA_DIR / "news_articles.csv"
 LOG_PATH = DATA_DIR / "news_collection_log.csv"
 
@@ -50,6 +51,8 @@ FIELDS = [
     "source_type", "collection_method", "feed_name", "feed_query", "summary",
     "geography_match", "geography_review", "issue_suggested", "issue_reviewed",
     "article_tone", "public_sentiment_evidence", "sentiment_target",
+    "candidate_mentions_suggested", "candidate_mentions_reviewed",
+    "candidate_evidence_type", "candidate_public_view_summary",
     "review_notes", "review_status", "first_seen_at", "last_seen_at",
 ]
 
@@ -125,6 +128,32 @@ def _geography_match(text: str, publisher: str, source_url: str) -> str:
     return "Uncertain — review location"
 
 
+def _candidate_names() -> list[str]:
+    if not CANDIDATES_PATH.exists():
+        return []
+    try:
+        with CANDIDATES_PATH.open("r", encoding="utf-8-sig", newline="") as handle:
+            return [
+                row.get("candidate_name", "").strip()
+                for row in csv.DictReader(handle)
+                if row.get("candidate_name", "").strip()
+            ]
+    except (OSError, csv.Error):
+        return []
+
+
+def _candidate_mentions(text: str) -> list[str]:
+    lowered = text.casefold()
+    return [name for name in _candidate_names() if name.casefold() in lowered]
+
+
+def _candidate_searches() -> list[tuple[str, str]]:
+    return [
+        (f"Candidate search — {name}", f'"{name}" (Kew OR Boroondara OR Victoria)')
+        for name in _candidate_names()
+    ]
+
+
 def _article_id(title: str, publisher: str, published_at: str, source_url: str) -> str:
     basis = "|".join([
         re.sub(r"\W+", " ", title.casefold()).strip(),
@@ -169,6 +198,10 @@ def _make_record(
         "article_tone": "Not assessed",
         "public_sentiment_evidence": "Not assessed",
         "sentiment_target": "",
+        "candidate_mentions_suggested": " | ".join(_candidate_mentions(combined)),
+        "candidate_mentions_reviewed": "",
+        "candidate_evidence_type": "Not assessed",
+        "candidate_public_view_summary": "",
         "review_notes": "",
         "review_status": "Needs review",
         "first_seen_at": now,
@@ -356,7 +389,8 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
     discovered = []
     errors = []
     successes = 0
-    for feed_name, query in GOOGLE_NEWS_QUERIES:
+    queries = GOOGLE_NEWS_QUERIES + _candidate_searches()
+    for feed_name, query in queries:
         try:
             results = _fetch_google_news(query, feed_name, days, session)
             discovered.extend(results)
@@ -429,7 +463,7 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
             writer.writeheader()
         writer.writerow({
             "collected_at": now,
-            "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 2,
+            "feeds_attempted": len(queries) + 2,
             "feeds_succeeded": successes,
             "items_discovered": len(discovered),
             "new_items": new_count,
@@ -437,7 +471,7 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
         })
 
     return {
-        "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 2,
+        "feeds_attempted": len(queries) + 2,
         "feeds_succeeded": successes,
         "items_discovered": len(discovered),
         "new_items": new_count,
