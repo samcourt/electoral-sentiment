@@ -138,9 +138,9 @@ def _seat_poll_anchors(poll_path: str | Path) -> dict:
         elif "sophie torney" in option:
             values["Sophie Torney"] = float(value)
         elif "labor" in option:
-            values["David Sun"] = float(value)
+            values["Labor party (candidate not identified)"] = float(value)
         elif "one nation" in option:
-            values["David Laird"] = float(value)
+            values["One Nation party (candidate not selected)"] = float(value)
     return values
 
 
@@ -194,15 +194,28 @@ def build_kew_candidate_scenario(
         basis = ""
         delta_key = None
 
-        if name in anchors:
+        if name in {"Jess Wilson", "Sophie Torney"} and name in anchors:
             base = anchors[name]
-            basis = "March 2026 Kew uComms poll anchor (campaign-commissioned; incomplete reported options)"
+            basis = (
+                "March 2026 Kew uComms candidate-specific poll anchor "
+                "(campaign-commissioned; incomplete reported options)"
+            )
             if name == "Jess Wilson":
                 delta_key = "Liberal–National Coalition"
-            elif name == "David Sun":
-                delta_key = "Labor"
-            elif name == "David Laird":
-                delta_key = "One Nation"
+        elif name == "David Sun" and "Labor party (candidate not identified)" in anchors:
+            base = anchors["Labor party (candidate not identified)"]
+            basis = (
+                "March 2026 Kew Labor party-intention poll anchor; candidate not identified "
+                "in the poll report, so this is not a personal candidate measure"
+            )
+            delta_key = "Labor"
+        elif name == "David Laird" and "One Nation party (candidate not selected)" in anchors:
+            base = anchors["One Nation party (candidate not selected)"]
+            basis = (
+                "March 2026 Kew One Nation party-intention poll anchor; candidate had not "
+                "been selected at the time, so this is not a personal candidate measure"
+            )
+            delta_key = "One Nation"
         elif party == "The Greens":
             base = historical_candidates.get("Jackie Carter")
             basis = "2022 Kew Greens candidate result, adjusted by statewide Greens polling movement since March"
