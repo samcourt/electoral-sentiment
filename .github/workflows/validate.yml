@@ -61,4 +61,13 @@ jobs:
           assert len(final_pair) == 2, "Expected the 2022 final two-candidate preference pair"
           assert {row["candidate_name"] for row in final_pair} == {"Jess Wilson", "Lucy Skelton"}
           print("Validated 10 official Kew candidates and 2022 final preference distribution.")
+
+          polls_path = Path("data/kew_polls.csv")
+          with polls_path.open(encoding="utf-8-sig", newline="") as handle:
+              polls = list(csv.DictReader(handle))
+          assert polls, "Expected the published Kew poll record"
+          assert all(row["pollster"] and row["source_url"] and row["limitations"] for row in polls)
+          assert {row["poll_id"] for row in polls} == {"UCOMMS-KEW-MAR2026"}
+          assert all(int(row["sample_size"]) == 914 for row in polls)
+          print(f"Validated {len(polls)} reported poll-option records with methodology caveats.")
           PY
