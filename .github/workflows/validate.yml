@@ -45,4 +45,20 @@ jobs:
           assert rows, "Expected the seed news dataset to contain at least one record"
           assert all(row["article_id"] and row["source_url"] for row in rows)
           print(f"Validated {len(rows)} seeded news records with {len(FIELDS)} fields.")
+
+          candidates_path = Path("data/kew_2026_candidates.csv")
+          with candidates_path.open(encoding="utf-8-sig", newline="") as handle:
+              candidates = list(csv.DictReader(handle))
+          assert len(candidates) == 10, f"Expected 10 official Kew candidates, found {len(candidates)}"
+          ballot_orders = [int(row["ballot_order"]) for row in candidates]
+          assert sorted(ballot_orders) == list(range(1, 11)), "Candidate ballot order is incomplete or duplicated"
+          assert len({row["candidate_name"] for row in candidates}) == 10, "Candidate names must be unique"
+
+          results_path = Path("data/kew_2022_results.csv")
+          with results_path.open(encoding="utf-8-sig", newline="") as handle:
+              historic = list(csv.DictReader(handle))
+          final_pair = [row for row in historic if row["result_measure"] == "final_preference_distribution"]
+          assert len(final_pair) == 2, "Expected the 2022 final two-candidate preference pair"
+          assert {row["candidate_name"] for row in final_pair} == {"Jess Wilson", "Lucy Skelton"}
+          print("Validated 10 official Kew candidates and 2022 final preference distribution.")
           PY
