@@ -56,9 +56,9 @@ This is a deliberately simple scenario rule, not a fitted predictive model. The 
 
 The pass-through slider allows the user to test how much statewide polling movement is assumed to transfer to Kew. Candidate vote checkpoints compare 2022 actual results, the March local poll and the current scenario, while flagging candidate/party proxies. Its 0.5×–1.5× sensitivity range is not a statistical confidence interval.
 
-### Conditional Coalition–Labor scenario
+### Conditional Wilson–Sun two-candidate-preferred (2CP) scenario
 
-The uniform-swing scenario applies the current statewide Coalition two-party-preferred share change to the 2022 Kew final Liberal–Labor preference distribution. It is conditional on Jess Wilson and David Sun being the final two candidates. It does not estimate which candidates will finish first and second, and it should not be called the likely final 2CP when an independent or One Nation candidate could finish ahead of Labor.
+The uniform-swing scenario applies the current statewide Coalition–Labor two-party-preferred (2PP) share change to the 2022 Kew final Liberal–Labor preference distribution. It is conditional on Jess Wilson and David Sun being the final two candidates. It does not estimate which candidates will finish first and second, and it is not a general Kew 2CP forecast when an independent or One Nation candidate could finish ahead of Labor.
 
 `data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv` hold a separately-labelled AEF Kew forecast benchmark dated 30 October 2026. Those values are not produced by this project. They provide a comparison point and should be rechecked for date/freshness before interpretation.
 
@@ -70,7 +70,7 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 
 - There is only one known seat-level Kew poll in the data, commissioned by a candidate campaign, and it is old and incompletely reported.
 - Statewide polling is not a direct measurement of Kew candidate support.
-- The model does not yet estimate preference transfers for Wilson–Torney, Wilson–Laird or other possible final pairs.
+- The model does not yet independently estimate preference transfers for Wilson–Torney, Wilson–Laird or other possible final pairs; those remain external AEF scenarios only.
 - The model has not been backtested on previous elections and does not produce its own win probabilities.
 - News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
 
