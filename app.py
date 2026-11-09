@@ -11,6 +11,7 @@ NEWS_PATH = DATA_DIR / "news_articles.csv"
 RESULTS_PATH = DATA_DIR / "vic_2022_district_results.csv"
 KEW_CANDIDATES_PATH = DATA_DIR / "kew_2026_candidates.csv"
 KEW_RESULTS_PATH = DATA_DIR / "kew_2022_results.csv"
+KEW_POLLS_PATH = DATA_DIR / "kew_polls.csv"
 
 st.set_page_config(
     page_title="Electoral Sentiment Tracker",
@@ -113,11 +114,24 @@ def load_kew_historical_results():
     return pd.read_csv(KEW_RESULTS_PATH, keep_default_na=False)
 
 
+@st.cache_data
+def load_kew_polls():
+    if not KEW_POLLS_PATH.exists():
+        return pd.DataFrame()
+    polls = pd.read_csv(KEW_POLLS_PATH, keep_default_na=False)
+    if "reported_pct" in polls.columns:
+        polls["reported_pct"] = pd.to_numeric(polls["reported_pct"], errors="coerce")
+    if "sample_size" in polls.columns:
+        polls["sample_size"] = pd.to_numeric(polls["sample_size"], errors="coerce")
+    return polls
+
+
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
 OBSERVATIONS = load_observations()
 NEWS_ARTICLES = load_news_articles()
 KEW_CANDIDATES = load_kew_candidates()
 KEW_HISTORICAL_RESULTS = load_kew_historical_results()
+KEW_POLLS = load_kew_polls()
 
 st.title("Australian Electoral Sentiment Tracker")
 st.caption("Research prototype · Victoria 2026 live case · Federal and NSW expansion planned")
@@ -303,6 +317,34 @@ if jurisdiction == "Victoria":
                     )
             else:
                 st.info("District-level 2022 results have not yet been imported.")
+
+            if district == "Kew":
+                st.markdown("#### Published Kew polling measurements")
+                if not KEW_POLLS.empty:
+                    poll_meta = KEW_POLLS.iloc[0]
+                    st.caption(
+                        f"{poll_meta['pollster']} · {poll_meta['fieldwork_period']} · "
+                        f"n={int(poll_meta['sample_size']) if str(poll_meta['sample_size']).strip() else 'not stated'} · "
+                        f"published {poll_meta['publication_date']} · commissioned by {poll_meta['commissioned_by']}"
+                    )
+                    poll_display = KEW_POLLS[
+                        ["option_label", "party_or_type", "reported_pct"]
+                    ].rename(columns={
+                        "option_label": "Reported option",
+                        "party_or_type": "Party / type",
+                        "reported_pct": "Reported first-preference intention (%)",
+                    })
+                    st.dataframe(
+                        poll_display,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(str(poll_meta["limitations"]))
+                    st.markdown(
+                        f"[Read the published poll report ↗]({poll_meta['source_url']})"
+                    )
+                else:
+                    st.info("No published Kew seat-level poll has been loaded.")
 
             st.markdown("#### Sentiment and community observations")
 
@@ -920,5 +962,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.4.0 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.4.1 · Built with Streamlit · No personal voter data is collected."
 )
