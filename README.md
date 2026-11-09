@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.5.1
+# Australian Electoral Sentiment Tracker — prototype 0.5.2
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -80,7 +80,7 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 
 `data/kew_2022_results.csv` stores the official 2022 first-preference result for each candidate and the final preference distribution. In 2022, the final distribution was between Jess Wilson (Liberal) and Lucy Skelton (Labor): 53.98% to 46.02%. The early booth-level 2CP count was not the same as the final electorate-wide preference distribution. This historical record is not a current estimate.
 
-In the Kew news review form, select the candidates directly mentioned, classify the type of candidate-related evidence, and summarise any public view with attribution. The candidate panel charts the volume of reviewed Kew-specific news items over time, charts counts of source records by public-view evidence type, and lists the underlying evidence. It does not calculate candidate sentiment scores, projected first-preference shares, 2PP/2CP forecasts or a projected winner. Coverage and evidence-record volume are not popularity, support or voting intention. Published polls and final electoral results may be displayed separately with their source, date, geography, sample and measurement type.
+In the Kew news review form, select the candidates directly mentioned, classify the type of candidate-related evidence, and summarise any public view with attribution. The candidate panel charts the volume of reviewed Kew-specific news items over time, charts counts of source records by public-view evidence type, and lists the underlying evidence. Coverage and evidence-record volume are not popularity, support or voting intention. The separate forecasting workspace produces explicitly-labelled first-preference scenarios and a conditional Wilson–Sun two-party scenario; it does not produce a calibrated candidate win probability or an independent final-two preference forecast. Published polls and final electoral results are displayed separately with their source, date, geography, sample and measurement type.
 
 A March 2026 uComms poll of 914 Kew respondents, commissioned by Sophie Torney's campaign and reported in the press, is stored in `data/kew_polls.csv`. The source review did not establish exact field dates, sampling mode, weighting, question wording or margin of error. It is displayed as a dated, campaign-commissioned poll measurement, not as an independent consensus or current estimate.
 
