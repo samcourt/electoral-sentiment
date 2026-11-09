@@ -83,13 +83,13 @@ The campaign-signal workspace adds four distinct signal collections. Donation an
 
 ### Disclosed donations
 
-`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. Despite its legacy filename, the ledger's `electorate` field supports all Victorian Legislative Assembly districts. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
+`data/vic_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. Despite its legacy filename, the ledger's `electorate` field supports all Victorian Legislative Assembly districts. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
 
 The VEC says donations of $1,290 or more must generally be disclosed within 21 days. This is a partial register: smaller donations are not disclosed, records may appear with a delay, and the ledger does not reveal all money or in-kind support available to a campaign. Party or associated-entity donations cannot automatically be assigned to an individual electorate or candidate. Donations indicate disclosed financial support/capacity, not voter support or campaign effectiveness.
 
 ### Campaign activity and street presence
 
-`data/kew_campaign_activity.csv` records one distinct observation per campaign activity across the currently selected district: door-knocking sessions, street stalls, shopping-strip visits, community events, volunteer mobilisation, signage and advertising/mail.
+`data/vic_campaign_activity.csv` records one distinct observation per campaign activity across the currently selected district: door-knocking sessions, street stalls, shopping-strip visits, community events, volunteer mobilisation, signage and advertising/mail.
 
 Each observation distinguishes scheduled/announced activity from campaign-reported completion, independent observation and third-party reporting. Exact volunteer and door-contact counts are stored only where the source reports them; they are not estimated from photos. A candidate with no recorded activity has a data gap, not a zero. Duplicate events and multiple posts about the same event should be consolidated during review.
 
