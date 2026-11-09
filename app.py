@@ -42,8 +42,8 @@ KEW_EXTERNAL_FORECAST_PATH = DATA_DIR / "kew_external_forecast_benchmarks.csv"
 KEW_EXTERNAL_2CP_PATH = DATA_DIR / "kew_external_2cp_benchmarks.csv"
 VIC_POLL_AVERAGE_BENCHMARK_PATH = DATA_DIR / "vic_poll_average_benchmarks.csv"
 KEW_FORECAST_SNAPSHOTS_PATH = DATA_DIR / "kew_forecast_snapshots.csv"
-KEW_DONATIONS_PATH = DATA_DIR / "vic_campaign_donations.csv"
-KEW_ACTIVITY_PATH = DATA_DIR / "vic_campaign_activity.csv"
+VIC_CAMPAIGN_DONATIONS_PATH = DATA_DIR / "vic_campaign_donations.csv"
+VIC_CAMPAIGN_ACTIVITY_PATH = DATA_DIR / "vic_campaign_activity.csv"
 KALSHI_SNAPSHOTS_PATH = DATA_DIR / "kalshi_market_snapshots.csv"
 ANTONY_GREEN_NOTES_PATH = DATA_DIR / "antony_green_notes.csv"
 
@@ -431,7 +431,7 @@ if jurisdiction == "Victoria":
                     "We do not store individual donor names in this tracker."
                 )
                 donation_data_all = load_csv_or_empty(
-                    KEW_DONATIONS_PATH, DONATION_FIELDS
+                    VIC_CAMPAIGN_DONATIONS_PATH, DONATION_FIELDS
                 )
                 if not donation_data_all.empty:
                     donation_data_all["amount_aud"] = pd.to_numeric(
@@ -518,7 +518,7 @@ if jurisdiction == "Victoria":
                     )
 
                 with st.expander("Record a VEC donation disclosure"):
-                    with st.form("kew_add_donation_form"):
+                    with st.form("vic_add_donation_form"):
                         donation_date_value = st.date_input(
                             "Donation date", value=LOCAL_TODAY, key="donation_date"
                         )
@@ -589,7 +589,7 @@ if jurisdiction == "Victoria":
                             else "Unassigned"
                         )
                         append_csv_record(
-                            KEW_DONATIONS_PATH,
+                            VIC_CAMPAIGN_DONATIONS_PATH,
                             {
                                 "record_id": record_id,
                                 "donation_date": donation_date_value.isoformat(),
@@ -621,7 +621,7 @@ if jurisdiction == "Victoria":
                     "estimate counts from photographs or treat attendance as voter support."
                 )
                 activity_data_all = load_csv_or_empty(
-                    KEW_ACTIVITY_PATH, ACTIVITY_FIELDS
+                    VIC_CAMPAIGN_ACTIVITY_PATH, ACTIVITY_FIELDS
                 )
                 activity_data = activity_data_all[
                     activity_data_all["electorate"] == district
@@ -687,7 +687,7 @@ if jurisdiction == "Victoria":
                     )
 
                 with st.expander("Record a campaign activity observation"):
-                    with st.form("kew_add_activity_form"):
+                    with st.form("vic_add_activity_form"):
                         activity_candidate = st.text_input(
                             "Candidate / campaign name",
                             help="Free text allows recording candidates in any of Victoria's 88 districts.",
@@ -753,7 +753,7 @@ if jurisdiction == "Victoria":
                             f"{len(activity_data_all) + 1:05d}"
                         )
                         append_csv_record(
-                            KEW_ACTIVITY_PATH,
+                            VIC_CAMPAIGN_ACTIVITY_PATH,
                             {
                                 "activity_id": activity_id,
                                 "activity_date": activity_date_value.isoformat(),
