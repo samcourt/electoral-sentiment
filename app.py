@@ -1067,7 +1067,10 @@ if jurisdiction == "Victoria":
                         display_polls = poll_history[
                             [
                                 "pollster", "fieldwork_start", "fieldwork_end",
-                                "sample_size", "alp_pct", "coalition_pct",
+                                "sample_size", "mode", "sample_frame",
+                                "recruitment_method", "weighting", "response_rate",
+                                "effective_sample_size", "reported_margin_of_error",
+                                "quality_weight", "alp_pct", "coalition_pct",
                                 "one_nation_pct", "greens_pct", "others_pct",
                                 "coalition_tpp_pct", "average_eligible", "source_url"
                             ]
@@ -1076,6 +1079,14 @@ if jurisdiction == "Victoria":
                             "fieldwork_start": "Fieldwork start",
                             "fieldwork_end": "Fieldwork end",
                             "sample_size": "Sample",
+                            "mode": "Mode",
+                            "sample_frame": "Sample frame",
+                            "recruitment_method": "Recruitment",
+                            "weighting": "Weighting",
+                            "response_rate": "Response rate",
+                            "effective_sample_size": "Effective sample",
+                            "reported_margin_of_error": "Reported MOE",
+                            "quality_weight": "Project source weight",
                             "alp_pct": "Labor",
                             "coalition_pct": "Coalition",
                             "one_nation_pct": "One Nation",
@@ -1085,6 +1096,12 @@ if jurisdiction == "Victoria":
                             "average_eligible": "In our average",
                             "source_url": "Source",
                         })
+                        st.caption(
+                            "Methodology fields marked 'Not reported' are genuine disclosure gaps "
+                            "in the sources reviewed, not values assumed by the tracker. "
+                            "Project source weights are transparent modelling assumptions, not a "
+                            "statistical quality rating."
+                        )
                         st.dataframe(
                             display_polls,
                             use_container_width=True,
@@ -2051,5 +2068,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.6.0 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.6.1 · Built with Streamlit · No personal voter data is collected."
 )
