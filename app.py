@@ -9,6 +9,8 @@ DISTRICTS_PATH = DATA_DIR / "vic_districts_2026.csv"
 OBSERVATIONS_PATH = DATA_DIR / "kew_seed_observations.csv"
 NEWS_PATH = DATA_DIR / "news_articles.csv"
 RESULTS_PATH = DATA_DIR / "vic_2022_district_results.csv"
+KEW_CANDIDATES_PATH = DATA_DIR / "kew_2026_candidates.csv"
+KEW_RESULTS_PATH = DATA_DIR / "kew_2022_results.csv"
 
 st.set_page_config(
     page_title="Electoral Sentiment Tracker",
@@ -79,6 +81,16 @@ def load_news_articles():
     if missing:
         st.error("The news CSV is missing required columns: " + ", ".join(sorted(missing)))
         return pd.DataFrame()
+    # Add candidate review fields when opening older local CSV snapshots.
+    candidate_fields = {
+        "candidate_mentions_suggested": "",
+        "candidate_mentions_reviewed": "",
+        "candidate_evidence_type": "Not assessed",
+        "candidate_public_view_summary": "",
+    }
+    for column, default in candidate_fields.items():
+        if column not in articles.columns:
+            articles[column] = default
     articles["published_sort"] = pd.to_datetime(
         articles["published_at"], errors="coerce", utc=True
     )
@@ -86,9 +98,26 @@ def load_news_articles():
         ["published_sort", "title"], ascending=[False, True], na_position="last"
     )
 
+
+@st.cache_data
+def load_kew_candidates():
+    if not KEW_CANDIDATES_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(KEW_CANDIDATES_PATH, keep_default_na=False).sort_values("ballot_order")
+
+
+@st.cache_data
+def load_kew_historical_results():
+    if not KEW_RESULTS_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(KEW_RESULTS_PATH, keep_default_na=False)
+
+
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
 OBSERVATIONS = load_observations()
 NEWS_ARTICLES = load_news_articles()
+KEW_CANDIDATES = load_kew_candidates()
+KEW_HISTORICAL_RESULTS = load_kew_historical_results()
 
 st.title("Australian Electoral Sentiment Tracker")
 st.caption("Research prototype · Victoria 2026 live case · Federal and NSW expansion planned")
@@ -177,6 +206,85 @@ if jurisdiction == "Victoria":
             )
             st.markdown(f"### {district}")
             st.markdown(f"[2026 district information at the VEC]({vec_url})")
+
+            if district == "Kew":
+                st.markdown("#### 2026 candidate register")
+                st.caption(
+                    "Official VEC nomination list, shown in ballot-paper order. "
+                    "Candidate inclusion is descriptive and does not imply an assessment."
+                )
+                if not KEW_CANDIDATES.empty:
+                    candidate_display = KEW_CANDIDATES[
+                        ["ballot_order", "candidate_name", "party", "candidate_source_url"]
+                    ].rename(columns={
+                        "ballot_order": "Ballot order",
+                        "candidate_name": "Candidate",
+                        "party": "Party / affiliation",
+                        "candidate_source_url": "VEC nominations",
+                    })
+                    st.dataframe(
+                        candidate_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "VEC nominations": st.column_config.LinkColumn(
+                                "Official VEC list", display_text="Open nominations ↗"
+                            )
+                        },
+                    )
+                else:
+                    st.warning("The Kew candidate register is not present in data/.")
+
+                st.markdown("#### 2022 historical result — baseline only")
+                st.caption(
+                    "These are actual results from the previous state election, not estimates "
+                    "for 2026. Candidate names and the contest for the final preference "
+                    "distribution differ from the current election."
+                )
+                if not KEW_HISTORICAL_RESULTS.empty:
+                    historical_primary = KEW_HISTORICAL_RESULTS[
+                        KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
+                    ].copy()
+                    if not historical_primary.empty:
+                        historical_primary["share_pct"] = pd.to_numeric(
+                            historical_primary["share_pct"], errors="coerce"
+                        )
+                        st.dataframe(
+                            historical_primary[
+                                ["candidate_name", "party", "votes", "share_pct"]
+                            ].rename(columns={
+                                "candidate_name": "2022 candidate",
+                                "party": "Party",
+                                "votes": "First-preference votes",
+                                "share_pct": "First preference (%)",
+                            }).sort_values("First preference (%)", ascending=False),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    final_pair = KEW_HISTORICAL_RESULTS[
+                        KEW_HISTORICAL_RESULTS["result_measure"] == "final_preference_distribution"
+                    ].copy()
+                    if not final_pair.empty:
+                        st.markdown("**2022 final two-candidate preference distribution**")
+                        st.dataframe(
+                            final_pair[
+                                ["candidate_name", "party", "votes", "share_pct"]
+                            ].rename(columns={
+                                "candidate_name": "2022 candidate",
+                                "party": "Party",
+                                "votes": "Votes after preferences",
+                                "share_pct": "Share (%)",
+                            }),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    st.caption(
+                        "Source: Victorian Electoral Commission. In 2022 the final distribution "
+                        "was Liberal candidate Jess Wilson versus Labor candidate Lucy Skelton. "
+                        "The earlier booth-level two-candidate count was not the final distribution."
+                    )
+                else:
+                    st.warning("The verified Kew 2022 result file is missing.")
 
             if RESULTS_PATH.exists():
                 results = pd.read_csv(RESULTS_PATH)
@@ -430,6 +538,75 @@ if jurisdiction == "Victoria":
                             st.write("- " + error)
 
             news_df = NEWS_ARTICLES.copy()
+            if not news_df.empty:
+                st.markdown("#### Candidate coverage and public evidence")
+                st.caption(
+                    "Coverage counts describe how often a candidate appears in reviewed local "
+                    "news items. They are not measures of popularity, support or voting intention. "
+                    "Source-attributed public views are displayed individually, not combined into a score."
+                )
+                candidate_list = (
+                    KEW_CANDIDATES["candidate_name"].tolist()
+                    if not KEW_CANDIDATES.empty else []
+                )
+                if candidate_list:
+                    candidate_focus = st.selectbox(
+                        "Candidate to inspect",
+                        candidate_list,
+                        key="candidate_evidence_focus",
+                    )
+                    reviewed_candidate_news = news_df[
+                        (news_df["review_status"] == "Reviewed")
+                        & (news_df["geography_review"] == "Kew-specific")
+                        & (news_df["candidate_mentions_reviewed"].fillna("") != "")
+                    ].copy()
+                    candidate_rows = reviewed_candidate_news[
+                        reviewed_candidate_news["candidate_mentions_reviewed"].apply(
+                            lambda value: candidate_focus in [
+                                item.strip() for item in str(value).split(" | ") if item.strip()
+                            ]
+                        )
+                    ].copy()
+
+                    # Show source coverage volume over time, without direction or vote inference.
+                    if not candidate_rows.empty:
+                        candidate_rows["month"] = (
+                            candidate_rows["published_sort"].dt.to_period("M").astype(str)
+                        )
+                        coverage_series = candidate_rows.groupby("month").size().rename(
+                            "Reviewed local news items"
+                        )
+                        st.markdown(f"**{candidate_focus} — reviewed Kew-specific coverage**")
+                        st.line_chart(coverage_series)
+                        st.caption(
+                            "A rise in coverage means more reviewed articles were collected, "
+                            "not that support or opposition increased."
+                        )
+                        st.markdown("**Source-attributed candidate evidence**")
+                        for _, candidate_item in candidate_rows.iterrows():
+                            with st.expander(
+                                f"{candidate_item['published_at'][:10]} · "
+                                f"{candidate_item['publisher']} · "
+                                f"{candidate_item['candidate_evidence_type']}"
+                            ):
+                                st.write(candidate_item["title"])
+                                st.write(candidate_item["candidate_public_view_summary"] or
+                                         candidate_item["summary"])
+                                st.caption(
+                                    "Issue: " + str(candidate_item["issue_reviewed"] or
+                                                    candidate_item["issue_suggested"])
+                                )
+                                st.markdown(
+                                    f"[Open original source ↗]({candidate_item['source_url']})"
+                                )
+                    else:
+                        st.info(
+                            "No candidate-specific stories have yet been reviewed as Kew-specific "
+                            "for this candidate. Review items below to build the time series."
+                        )
+                else:
+                    st.info("Load the Kew candidate register to enable candidate-level review.")
+
             if news_df.empty:
                 st.info(
                     "No news leads are stored yet. Select 'Collect latest local news' "
@@ -579,6 +756,57 @@ if jurisdiction == "Victoria":
                                 "What is that sentiment about?",
                                 value=str(selected_article.get("sentiment_target", "")),
                             )
+                            st.markdown("**Candidate-specific evidence**")
+                            candidate_options = (
+                                KEW_CANDIDATES["candidate_name"].tolist()
+                                if not KEW_CANDIDATES.empty else []
+                            )
+                            suggested_names = [
+                                name for name in str(
+                                    selected_article.get("candidate_mentions_suggested", "")
+                                ).split(" | ") if name in candidate_options
+                            ]
+                            reviewed_names = [
+                                name for name in str(
+                                    selected_article.get("candidate_mentions_reviewed", "")
+                                ).split(" | ") if name in candidate_options
+                            ]
+                            if not reviewed_names:
+                                reviewed_names = suggested_names
+                            candidate_mentions = st.multiselect(
+                                "Candidates directly mentioned",
+                                candidate_options,
+                                default=reviewed_names,
+                                help="Suggestions are based on exact name matches. Check the article before saving.",
+                            )
+                            candidate_evidence_choices = [
+                                "Not assessed",
+                                "Candidate statement / policy",
+                                "Candidate campaign activity",
+                                "Public endorsement of candidate",
+                                "Public criticism of candidate",
+                                "Public comment about candidate",
+                                "Media profile / biographical coverage",
+                                "No candidate-specific content",
+                            ]
+                            evidence_current = selected_article.get(
+                                "candidate_evidence_type", "Not assessed"
+                            )
+                            evidence_index = (
+                                candidate_evidence_choices.index(evidence_current)
+                                if evidence_current in candidate_evidence_choices else 0
+                            )
+                            candidate_evidence_type = st.selectbox(
+                                "Type of candidate-related evidence",
+                                candidate_evidence_choices,
+                                index=evidence_index,
+                            )
+                            candidate_public_view_summary = st.text_area(
+                                "Source-attributed public view (summary, not a score)",
+                                value=str(selected_article.get("candidate_public_view_summary", "")),
+                                help="Record who expressed the view and what it concerned. Do not infer general voter opinion from one comment.",
+                            )
+
                             review_notes = st.text_area(
                                 "Review notes",
                                 value=str(selected_article.get("review_notes", "")),
@@ -595,6 +823,9 @@ if jurisdiction == "Victoria":
                                 news_df.loc[row_index, "article_tone"] = article_tone
                                 news_df.loc[row_index, "public_sentiment_evidence"] = public_sentiment
                                 news_df.loc[row_index, "sentiment_target"] = sentiment_target
+                                news_df.loc[row_index, "candidate_mentions_reviewed"] = " | ".join(candidate_mentions)
+                                news_df.loc[row_index, "candidate_evidence_type"] = candidate_evidence_type
+                                news_df.loc[row_index, "candidate_public_view_summary"] = candidate_public_view_summary
                                 news_df.loc[row_index, "review_notes"] = review_notes
                                 news_df.loc[row_index, "review_status"] = "Reviewed"
                                 news_df.drop(columns=["published_sort"], errors="ignore").to_csv(
@@ -663,5 +894,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.3.0 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.4.0 · Built with Streamlit · No personal voter data is collected."
 )
