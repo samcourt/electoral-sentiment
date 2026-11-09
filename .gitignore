@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.streamlit/secrets.toml
+data/news_collection_log.csv
