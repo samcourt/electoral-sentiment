@@ -7,6 +7,9 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Streamlit dashboard with a searchable register of Victoria's 88 current Legislative Assembly districts.
 - Complete 88-district Victorian Legislative Assembly register in `data/vic_districts_2026.csv`.
 - Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail, monthly evidence counts and separately reported consultation response figures. The app opens on Kew by default.
+- Local news discovery pipeline in `news_monitor.py`, using eight Google News RSS searches plus direct Boroondara newsroom and Victoria's Big Build work-notice indexes.
+- Five manually sourced Kew news leads in `data/news_articles.csv` to seed the review queue.
+- News source register in `data/news_sources.csv`, including coverage and limitations.
 - Structured consultation fields include support/opposition percentages, conditional support, unsure responses, response counts, survey counts, written submissions, recorded contributions and page views. Blank fields mean not published/not available; they are not zero.
 - Victoria's eight Legislative Council regions as a separate view.
 - Official 2022 statewide first-preference baseline (historical context only).
@@ -25,6 +28,36 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Local news monitoring — Kew pilot
+
+The Kew profile has an on-demand **Collect latest local news** button. It runs `news_monitor.py`, which checks:
+
+- Eight Google News RSS searches for Kew, Kew East, Boroondara, local planning/services, Eastsider News and Big Build stories.
+- The City of Boroondara newsroom index.
+- Victoria's Big Build North East Link work-notices index, retaining links that specifically mention Kew or Kew East.
+
+The collector is discovery infrastructure, not a sentiment engine. It stores article metadata, publisher, publication date, source URL and a short RSS/index snippet. It does not download full articles. Keyword issue labels and geographic matches are suggestions only.
+
+Every article starts as **Needs review**. In the Kew profile, use **Review a news item** to record:
+- Whether it is Kew-specific, nearby-area context, Boroondara-wide context or irrelevant.
+- The issue classification.
+- Article framing/tone (kept separate from what residents say).
+- Whether the article contains explicit public sentiment evidence, and what it is about.
+
+Do not infer resident sentiment from a journalist's tone, government project update or political statement. An article mentioning Kew is not automatically relevant to the Kew electorate. Review the geography and evidence before using it in any analysis.
+
+### News files
+
+- `data/news_articles.csv`: current news leads and reviewer annotations.
+- `data/news_sources.csv`: monitored sources and known limitations.
+- `data/news_collection_log.csv`: created locally by each collection run, with successful/failed feed counts.
+
+Collection and review update `data/news_articles.csv` in the Codespace working tree. Commit the updated CSV to GitHub periodically if you want the collected history backed up in the repository and available in a fresh Codespace.
+
+The collector is on-demand; it does not run in the background. Keep refreshes sensible and respect publisher terms and access controls. Article links always point to the original publisher or its RSS discovery link.
+
+The ABC RSS service is not included because the ABC states that its RSS feeds are no longer being updated. Eastsider News is included as an indexed discovery query; it publishes periodic local editions rather than a verified live RSS feed.
 
 ## Import the official VEC 2022 district workbook
 
