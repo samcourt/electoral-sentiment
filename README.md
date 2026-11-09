@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.6.3
+# Australian Electoral Sentiment Tracker — prototype 0.6.4
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -77,19 +77,19 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 - The model has not been backtested on previous elections and does not produce its own win probabilities.
 - News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
 
-## Campaign capacity, market expectations and analyst sources (prototype 0.6.3)
+## Campaign capacity, market expectations and analyst sources (prototype 0.6.4)
 
-The Kew workspace adds four distinct signal collections. They are currently a Kew pilot, with an electorate key in the donation and activity ledgers to support a later rollout across Victoria's 88 seats. The entry interface remains locked to Kew until a verified statewide candidate register is available. The signals are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
+The campaign-signal workspace adds four distinct signal collections. Donation and campaign-activity records are scoped to the currently selected Victorian electorate, so the same workflow can be used across all 88 districts. Candidate and recipient names are free text rather than a partial candidate dropdown; the district selector supplies the electorate key. Statewide donations remain tagged as Statewide and are displayed separately, not attributed to every seat. The signals are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
 
 ### Disclosed donations
 
-`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
+`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. Despite its legacy filename, the ledger's `electorate` field supports all Victorian Legislative Assembly districts. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
 
 The VEC says donations of $1,290 or more must generally be disclosed within 21 days. This is a partial register: smaller donations are not disclosed, records may appear with a delay, and the ledger does not reveal all money or in-kind support available to a campaign. Party or associated-entity donations cannot automatically be assigned to an individual electorate or candidate. Donations indicate disclosed financial support/capacity, not voter support or campaign effectiveness.
 
 ### Campaign activity and street presence
 
-`data/kew_campaign_activity.csv` records one distinct observation per campaign activity: door-knocking sessions, street stalls, shopping-strip visits, community events, volunteer mobilisation, signage and advertising/mail.
+`data/kew_campaign_activity.csv` records one distinct observation per campaign activity across the currently selected district: door-knocking sessions, street stalls, shopping-strip visits, community events, volunteer mobilisation, signage and advertising/mail.
 
 Each observation distinguishes scheduled/announced activity from campaign-reported completion, independent observation and third-party reporting. Exact volunteer and door-contact counts are stored only where the source reports them; they are not estimated from photos. A candidate with no recorded activity has a data gap, not a zero. Duplicate events and multiple posts about the same event should be consolidated during review.
 
