@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from datetime import date, datetime
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from news_monitor import collect_news
-LOCAL_TODAY = datetime.now(ZoneInfo("Australia/Sydney")).date()
-
 from kew_forecast import (
     MODEL_VERSION,
     build_kew_candidate_scenario,
@@ -13,6 +11,8 @@ from kew_forecast import (
     calculate_statewide_poll_average,
     make_snapshot_rows,
 )
+
+LOCAL_TODAY = datetime.now(ZoneInfo("Australia/Sydney")).date()
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
