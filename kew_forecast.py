@@ -329,8 +329,14 @@ def make_snapshot_rows(
             "metric_type": "candidate_primary_scenario",
             "candidate_name": row["candidate_name"],
             "estimate_pct": estimate,
-            "low_sensitivity_pct": "",
-            "high_sensitivity_pct": "",
+            "low_sensitivity_pct": (
+                row.get("sensitivity_low_pct", "")
+                if pd.notna(row.get("sensitivity_low_pct", "")) else ""
+            ),
+            "high_sensitivity_pct": (
+                row.get("sensitivity_high_pct", "")
+                if pd.notna(row.get("sensitivity_high_pct", "")) else ""
+            ),
             "assumption": row["estimate_basis"],
         })
     if tpp_scenario.get("available"):
