@@ -111,13 +111,13 @@ def _geography_match(text: str, publisher: str, source_url: str) -> str:
         host in domain
         for host in ("boroondara.vic.gov.au", "eastsidernews.org.au", "bigbuild.vic.gov.au")
     )
-    if re.search(r"\bkew\b", lowered) and (
-        local_publisher
-        or any(term in lowered for term in ("victoria", "melbourne", "boroondara", "kew east"))
-    ):
-        return "Kew mention — verify"
     if "kew east" in lowered or "north balwyn" in lowered:
         return "Kew-area context"
+    if re.search(r"\bkew\b", lowered) and (
+        local_publisher
+        or any(term in lowered for term in ("victoria", "melbourne", "boroondara"))
+    ):
+        return "Kew mention — verify"
     if "boroondara" in lowered or "boroondara.vic.gov.au" in domain:
         return "Boroondara-wide context"
     if any(suburb in lowered for suburb in LOCAL_SUBURBS):
@@ -319,19 +319,38 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
     except (requests.RequestException, ValueError) as exc:
         errors.append(f"City of Boroondara newsroom: {type(exc).__name__}: {exc}")
 
+    def natural_key(record):
+        return (
+            re.sub(r"\W+", " ", record.get("title", "").casefold()).strip(),
+            record.get("publisher", "").casefold().strip(),
+            (record.get("published_at", "") or "")[:10],
+        )
+
+    # Avoid duplicate rows when an item is found by both a publisher page and RSS.
+    existing_natural = {natural_key(record): article_id for article_id, record in existing.items()}
     new_count = 0
     for record in discovered:
         article_id = record["article_id"]
+        natural = natural_key(record)
+        if article_id not in existing and natural in existing_natural:
+            article_id = existing_natural[natural]
+            record["article_id"] = article_id
+
         if article_id in existing:
             old = existing[article_id]
             old["last_seen_at"] = now
-            # Refresh metadata, but never overwrite human review fields.
-            for field in ("title", "publisher", "published_at", "source_url",
-                          "source_type", "collection_method", "feed_name",
-                          "feed_query", "summary", "geography_match", "issue_suggested"):
+            # Refresh discovery metadata, but preserve direct publisher URLs and all review fields.
+            for field in ("title", "publisher", "published_at", "source_type",
+                          "collection_method", "feed_name", "feed_query", "summary",
+                          "geography_match", "issue_suggested"):
                 old[field] = record[field]
+            old_domain = urlparse(old.get("source_url", "")).netloc.casefold()
+            new_domain = urlparse(record.get("source_url", "")).netloc.casefold()
+            if new_domain and (not new_domain.endswith("google.com")):
+                old["source_url"] = record["source_url"]
         else:
             existing[article_id] = record
+            existing_natural[natural] = article_id
             new_count += 1
 
     records = sorted(
