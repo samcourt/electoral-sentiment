@@ -6,14 +6,15 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 
 - Streamlit dashboard with a searchable register of Victoria's 88 current Legislative Assembly districts.
 - Complete 88-district Victorian Legislative Assembly register in `data/vic_districts_2026.csv`.
-- Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail and monthly evidence counts. The app now opens on Kew by default so the pilot observations are visible immediately.
+- Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail, monthly evidence counts and separately reported consultation response figures. The app opens on Kew by default.
+- Structured consultation fields include support/opposition percentages, conditional support, unsure responses, response counts, survey counts, written submissions, recorded contributions and page views. Blank fields mean not published/not available; they are not zero.
 - Victoria's eight Legislative Council regions as a separate view.
 - Official 2022 statewide first-preference baseline (historical context only).
 - Canonical PostgreSQL schema for jurisdictions, election cycles, electorates, election results, observations, sentiment classifications and weekly indicators.
 - VEC workbook ingestion helper that downloads and inspects the official 2022 district-results workbook without guessing its internal schema.
 - Source register and data-quality notes.
 
-**Important:** no live sentiment feed, district-level 2022 result import, or boundary geometry is included yet. The Kew observations are a manually curated seed dataset; some are reports of constituent concerns or consultation summaries rather than direct, representative resident measurements. The app explicitly labels those gaps. It does not create synthetic scores or infer voting intention.
+**Important:** no live sentiment feed, district-level 2022 result import, or boundary geometry is included yet. The Kew observations are a manually curated seed dataset; some are reports of constituent concerns or consultation summaries rather than direct, representative resident measurements. Consultation response percentages are shown separately by proposal and are never pooled or averaged. The app explicitly labels those gaps. It does not create synthetic scores or infer voting intention.
 
 ## Run locally
 
@@ -60,7 +61,7 @@ Use the current VEC district/region boundaries for the relevant election cycle. 
 | Source | Use | Geography | Status |
 |---|---|---|---|
 | VEC 2022 results | Historical district first preferences and preference counts | District / voting centre | Workbook download helper included |
-| Kew seed observations | Six initial source-linked community, parliamentary and council observations | Kew and explicitly labelled Boroondara-wide proxy | Loaded into the Kew profile; seed evidence only, not representative polling |
+| Kew seed observations | Source-linked council consultations, planning engagement, parliamentary reports and issue signals | Kew, with explicitly labelled broader-area proxies | Loaded into the Kew profile; current file contains 12 records. Consultation responses are self-selected and not representative polling |
 | VEC 2026 election page | Election date, candidates and official notices | District / region | Manual source |
 | VEC district register | Current district names and profile links | District | 88 districts loaded |
 | VEC 2026 candidate spreadsheet | Candidate names and affiliations | District / region | Source registered; import pending |
