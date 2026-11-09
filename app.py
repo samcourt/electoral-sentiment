@@ -582,6 +582,32 @@ if jurisdiction == "Victoria":
                             "A rise in coverage means more reviewed articles were collected, "
                             "not that support or opposition increased."
                         )
+
+                        public_view_types = [
+                            "Public endorsement of candidate",
+                            "Public criticism of candidate",
+                            "Public comment about candidate",
+                        ]
+                        public_view_rows = candidate_rows[
+                            candidate_rows["candidate_evidence_type"].isin(public_view_types)
+                        ].copy()
+                        if not public_view_rows.empty:
+                            public_view_rows["month"] = (
+                                public_view_rows["published_sort"].dt.to_period("M").astype(str)
+                            )
+                            public_view_timeline = (
+                                public_view_rows.groupby(
+                                    ["month", "candidate_evidence_type"]
+                                ).size().unstack(fill_value=0).sort_index()
+                            )
+                            st.markdown("**Source records of public views over time**")
+                            st.bar_chart(public_view_timeline)
+                            st.caption(
+                                "Counts of reviewed articles containing attributed endorsements, "
+                                "criticism or public comments. These are source-record counts, "
+                                "not the number or proportion of voters holding those views."
+                            )
+
                         st.markdown("**Source-attributed candidate evidence**")
                         for _, candidate_item in candidate_rows.iterrows():
                             with st.expander(
