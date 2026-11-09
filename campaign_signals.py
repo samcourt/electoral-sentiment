@@ -42,6 +42,8 @@ MARKET_FIELDS = [
     "bid_ask_spread_cents", "volume", "volume_24h", "open_interest",
     "liquidity_dollars", "market_url", "rules_primary", "source_note",
 ]
+
+KALSHI_MARKET_FIELDS = MARKET_FIELDS
 ANALYST_FIELDS = [
     "record_id", "published_date", "analyst", "title", "coverage",
     "analysis_type", "key_points", "interpretation_limit", "source_url",
