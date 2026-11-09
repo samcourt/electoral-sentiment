@@ -1,0 +1,2 @@
+benchmark_id,source,as_of_date,alp_pct,coalition_pct,one_nation_pct,greens_pct,others_pct,source_url,notes
+"EARTH-ELECTS-2026-11-10","Earth Elects weighted poll average","2026-11-10","21.05","31.4","21.66","14.55","11.34","https://www.earthelects.com/victoria/","External statewide benchmark, separate from this project's own simple recency and pollster-quality weighted average."
