@@ -459,7 +459,7 @@ if jurisdiction == "Victoria":
                         "disclosure_date", ascending=False
                     )[
                         [
-                            "donation_date", "disclosure_date", "recipient_name",
+                            "donation_date", "disclosure_date", "electorate", "recipient_name",
                             "recipient_type", "donor_category", "amount_aud",
                             "geographic_scope", "source_url"
                         ]
@@ -495,6 +495,12 @@ if jurisdiction == "Victoria":
                         if not KEW_CANDIDATES.empty else []
                     )
                     with st.form("kew_add_donation_form"):
+                        donation_electorate = st.selectbox(
+                            "Electorate",
+                            DISTRICTS["district"].astype(str).tolist(),
+                            index=(DISTRICTS["district"].astype(str).tolist().index("Kew")
+                                   if "Kew" in DISTRICTS["district"].astype(str).tolist() else 0),
+                        )
                         donation_date_value = st.date_input(
                             "Donation date", value=LOCAL_TODAY, key="donation_date"
                         )
@@ -579,6 +585,7 @@ if jurisdiction == "Victoria":
                                 "source_url": donation_source,
                                 "source_note": donation_note,
                                 "recorded_at": sydney_now(),
+                                "electorate": donation_electorate,
                             },
                             DONATION_FIELDS,
                         )
@@ -625,7 +632,7 @@ if jurisdiction == "Victoria":
                         "activity_date", ascending=False
                     )[
                         [
-                            "activity_date", "candidate_name", "party",
+                            "activity_date", "electorate", "candidate_name", "party",
                             "activity_type", "activity_status", "location_suburb",
                             "volunteers_reported", "doors_contacted_reported",
                             "source_type", "source_url", "evidence_note"
@@ -661,6 +668,12 @@ if jurisdiction == "Victoria":
 
                 with st.expander("Record a campaign activity observation"):
                     with st.form("kew_add_activity_form"):
+                        activity_electorate = st.selectbox(
+                            "Electorate",
+                            DISTRICTS["district"].astype(str).tolist(),
+                            index=(DISTRICTS["district"].astype(str).tolist().index("Kew")
+                                   if "Kew" in DISTRICTS["district"].astype(str).tolist() else 0),
+                        )
                         activity_candidate = st.selectbox(
                             "Candidate / campaign",
                             candidate_options + ["Party / multi-candidate campaign"],
@@ -735,6 +748,7 @@ if jurisdiction == "Victoria":
                                 "activity_id": activity_id,
                                 "activity_date": activity_date_value.isoformat(),
                                 "recorded_at": sydney_now(),
+                                "electorate": activity_electorate,
                                 "candidate_name": activity_candidate,
                                 "party": activity_party,
                                 "activity_type": activity_kind,
@@ -2101,5 +2115,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.6.2 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.6.3 · Built with Streamlit · No personal voter data is collected."
 )
