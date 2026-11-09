@@ -98,10 +98,10 @@ jobs:
           print("Validated Kew external forecast benchmark and snapshot ledger.")
 
           expected_headers = {
-              "data/kew_campaign_donations.csv": {
+              "data/vic_campaign_donations.csv": {
                   "record_id", "donation_date", "recipient_name", "amount_aud", "electorate"
               },
-              "data/kew_campaign_activity.csv": {
+              "data/vic_campaign_activity.csv": {
                   "activity_id", "activity_date", "candidate_name", "activity_type", "electorate"
               },
               "data/kalshi_market_snapshots.csv": {
