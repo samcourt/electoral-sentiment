@@ -430,13 +430,20 @@ if jurisdiction == "Victoria":
                     "small donations and not-yet-disclosed donations are not visible. "
                     "We do not store individual donor names in this tracker."
                 )
-                donation_data = load_csv_or_empty(
+                donation_data_all = load_csv_or_empty(
                     KEW_DONATIONS_PATH, DONATION_FIELDS
                 )
-                if not donation_data.empty:
-                    donation_data["amount_aud"] = pd.to_numeric(
-                        donation_data["amount_aud"], errors="coerce"
+                if not donation_data_all.empty:
+                    donation_data_all["amount_aud"] = pd.to_numeric(
+                        donation_data_all["amount_aud"], errors="coerce"
                     )
+                donation_data = donation_data_all[
+                    donation_data_all["electorate"] == district
+                ].copy()
+                statewide_donation_data = donation_data_all[
+                    donation_data_all["electorate"] == "Statewide"
+                ].copy()
+                if not donation_data.empty:
                     d1, d2, d3 = st.columns(3)
                     d1.metric(
                         "Disclosed amount captured",
@@ -485,15 +492,32 @@ if jurisdiction == "Victoria":
                     )
                 else:
                     st.info(
-                        "No donation disclosures have been entered yet. An empty ledger means "
-                        "we have not captured records; it does not mean candidates received no donations."
+                        f"No seat-specific donation disclosures have been entered for {district}. "
+                        "An empty ledger means we have not captured records; it does not mean "
+                        "candidates received no donations."
+                    )
+                if not statewide_donation_data.empty:
+                    st.markdown("**Statewide party / entity disclosures (not attributed to this seat)**")
+                    st.dataframe(
+                        statewide_donation_data[
+                            [
+                                "donation_date", "disclosure_date", "recipient_name",
+                                "recipient_type", "donor_category", "amount_aud", "source_url"
+                            ]
+                        ].rename(columns={
+                            "donation_date": "Donation date",
+                            "disclosure_date": "Disclosure date",
+                            "recipient_name": "Recipient",
+                            "recipient_type": "Recipient type",
+                            "donor_category": "Donor category",
+                            "amount_aud": "Amount (AUD)",
+                            "source_url": "Source",
+                        }),
+                        use_container_width=True,
+                        hide_index=True,
                     )
 
                 with st.expander("Record a VEC donation disclosure"):
-                    candidate_options = (
-                        KEW_CANDIDATES["candidate_name"].astype(str).tolist()
-                        if not KEW_CANDIDATES.empty else []
-                    )
                     with st.form("kew_add_donation_form"):
                         donation_date_value = st.date_input(
                             "Donation date", value=LOCAL_TODAY, key="donation_date"
@@ -501,21 +525,14 @@ if jurisdiction == "Victoria":
                         disclosure_date_value = st.date_input(
                             "Disclosure date", value=LOCAL_TODAY, key="disclosure_date"
                         )
-                        donation_recipient = st.selectbox(
-                            "Recipient",
-                            candidate_options + [
-                                "Liberal Party (statewide)",
-                                "Australian Labor Party (statewide)",
-                                "The Greens (statewide)",
-                                "One Nation Victoria (statewide)",
-                                "Other party / associated entity",
-                                "Third-party campaigner",
-                            ],
+                        donation_recipient = st.text_input(
+                            "Recipient name exactly as shown in the VEC register",
+                            help="Enter the candidate, party or associated entity named in the public disclosure record.",
                         )
                         donation_type = st.selectbox(
                             "Recipient type",
                             [
-                                "Kew candidate",
+                                "Seat candidate",
                                 "Statewide political party",
                                 "Associated entity",
                                 "Third-party campaigner",
@@ -546,7 +563,7 @@ if jurisdiction == "Victoria":
                         donation_scope = st.selectbox(
                             "Geographic scope",
                             [
-                                "Kew candidate recipient",
+                                "Seat candidate recipient",
                                 "Statewide party / entity",
                                 "Unknown / not seat-specific",
                             ],
@@ -558,12 +575,18 @@ if jurisdiction == "Victoria":
                             "Evidence note (e.g. record date, donation type, VEC reference)"
                         )
                         donation_submitted = st.form_submit_button(
-                            "Add disclosed donation"
+                            "Add disclosed donation",
+                            disabled=not donation_recipient.strip(),
                         )
                     if donation_submitted:
                         record_id = (
                             f"DON-{donation_date_value.isoformat()}-"
-                            f"{len(donation_data) + 1:04d}-{abs(hash(donation_recipient)) % 10000:04d}"
+                            f"{len(donation_data_all) + 1:05d}"
+                        )
+                        donation_electorate = (
+                            district if donation_scope == "Seat candidate recipient"
+                            else "Statewide" if donation_scope == "Statewide party / entity"
+                            else "Unassigned"
                         )
                         append_csv_record(
                             KEW_DONATIONS_PATH,
@@ -579,7 +602,7 @@ if jurisdiction == "Victoria":
                                 "source_url": donation_source,
                                 "source_note": donation_note,
                                 "recorded_at": sydney_now(),
-                                "electorate": "Kew",
+                                "electorate": donation_electorate,
                             },
                             DONATION_FIELDS,
                         )
@@ -597,9 +620,12 @@ if jurisdiction == "Victoria":
                     "and door-contact counts are stored only when a source reports them; do not "
                     "estimate counts from photographs or treat attendance as voter support."
                 )
-                activity_data = load_csv_or_empty(
+                activity_data_all = load_csv_or_empty(
                     KEW_ACTIVITY_PATH, ACTIVITY_FIELDS
                 )
+                activity_data = activity_data_all[
+                    activity_data_all["electorate"] == district
+                ].copy()
                 if not activity_data.empty:
                     a1, a2, a3 = st.columns(3)
                     a1.metric("Activity records", len(activity_data))
@@ -656,23 +682,18 @@ if jurisdiction == "Victoria":
                     )
                 else:
                     st.info(
-                        "No campaign activity has been recorded yet. Missing observations do not "
-                        "mean a candidate has no campaign activity."
+                        f"No campaign activity has been recorded for {district}. Missing "
+                        "observations do not mean a candidate has no campaign activity."
                     )
 
                 with st.expander("Record a campaign activity observation"):
                     with st.form("kew_add_activity_form"):
-                        activity_candidate = st.selectbox(
-                            "Candidate / campaign",
-                            candidate_options + ["Party / multi-candidate campaign"],
+                        activity_candidate = st.text_input(
+                            "Candidate / campaign name",
+                            help="Free text allows recording candidates in any of Victoria's 88 districts.",
                         )
-                        activity_party = (
-                            str(KEW_CANDIDATES.loc[
-                                KEW_CANDIDATES["candidate_name"] == activity_candidate,
-                                "party"
-                            ].iloc[0])
-                            if not KEW_CANDIDATES.empty and activity_candidate in candidate_options
-                            else "Multiple / statewide"
+                        activity_party = st.text_input(
+                            "Party / affiliation (optional)"
                         )
                         activity_date_value = st.date_input(
                             "Activity date", value=LOCAL_TODAY, key="campaign_activity_date"
@@ -723,12 +744,13 @@ if jurisdiction == "Victoria":
                             "Evidence note (what happened, who reported it, and what remains unknown)"
                         )
                         activity_submitted = st.form_submit_button(
-                            "Add campaign activity"
+                            "Add campaign activity",
+                            disabled=not activity_candidate.strip(),
                         )
                     if activity_submitted:
                         activity_id = (
                             f"ACT-{activity_date_value.isoformat()}-"
-                            f"{len(activity_data) + 1:04d}"
+                            f"{len(activity_data_all) + 1:05d}"
                         )
                         append_csv_record(
                             KEW_ACTIVITY_PATH,
@@ -736,7 +758,7 @@ if jurisdiction == "Victoria":
                                 "activity_id": activity_id,
                                 "activity_date": activity_date_value.isoformat(),
                                 "recorded_at": sydney_now(),
-                                "electorate": "Kew",
+                                "electorate": district,
                                 "candidate_name": activity_candidate,
                                 "party": activity_party,
                                 "activity_type": activity_kind,
@@ -2103,5 +2125,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.6.3 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.6.4 · Built with Streamlit · No personal voter data is collected."
 )
