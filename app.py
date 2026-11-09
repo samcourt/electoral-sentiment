@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from news_monitor import collect_news
+LOCAL_TODAY = datetime.now(ZoneInfo("Australia/Sydney")).date()
+
 from kew_forecast import (
     MODEL_VERSION,
     build_kew_candidate_scenario,
@@ -400,7 +403,7 @@ if jurisdiction == "Victoria":
                 try:
                     state_average = calculate_statewide_poll_average(
                         VIC_STATE_POLLS_PATH,
-                        as_of=date.today(),
+                        as_of=LOCAL_TODAY,
                         half_life_days=14,
                     )
                     poll_history = pd.read_csv(VIC_STATE_POLLS_PATH, keep_default_na=False)
@@ -788,7 +791,7 @@ if jurisdiction == "Victoria":
                         "what the model said on each date with later updates and the final result."
                     )
                     if st.button("Record today's Kew forecast snapshot", key="save_kew_forecast_snapshot"):
-                        snapshot_date = date.today().isoformat()
+                        snapshot_date = LOCAL_TODAY.isoformat()
                         new_snapshot = make_snapshot_rows(
                             snapshot_date, candidate_scenario, tpp_scenario
                         )
