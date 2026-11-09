@@ -42,8 +42,8 @@ KEW_EXTERNAL_FORECAST_PATH = DATA_DIR / "kew_external_forecast_benchmarks.csv"
 KEW_EXTERNAL_2CP_PATH = DATA_DIR / "kew_external_2cp_benchmarks.csv"
 VIC_POLL_AVERAGE_BENCHMARK_PATH = DATA_DIR / "vic_poll_average_benchmarks.csv"
 KEW_FORECAST_SNAPSHOTS_PATH = DATA_DIR / "kew_forecast_snapshots.csv"
-KEW_DONATIONS_PATH = DATA_DIR / "kew_campaign_donations.csv"
-KEW_ACTIVITY_PATH = DATA_DIR / "kew_campaign_activity.csv"
+KEW_DONATIONS_PATH = DATA_DIR / "vic_campaign_donations.csv"
+KEW_ACTIVITY_PATH = DATA_DIR / "vic_campaign_activity.csv"
 KALSHI_SNAPSHOTS_PATH = DATA_DIR / "kalshi_market_snapshots.csv"
 ANTONY_GREEN_NOTES_PATH = DATA_DIR / "antony_green_notes.csv"
 
@@ -608,7 +608,7 @@ if jurisdiction == "Victoria":
                         )
                         st.success(
                             "Donation record added locally. Commit "
-                            "data/kew_campaign_donations.csv to preserve it in GitHub."
+                            "data/vic_campaign_donations.csv to preserve it in GitHub."
                         )
                         st.rerun()
 
@@ -775,7 +775,7 @@ if jurisdiction == "Victoria":
                         )
                         st.success(
                             "Campaign activity added locally. Commit "
-                            "data/kew_campaign_activity.csv to preserve it in GitHub."
+                            "data/vic_campaign_activity.csv to preserve it in GitHub."
                         )
                         st.rerun()
 
