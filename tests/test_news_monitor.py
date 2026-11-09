@@ -1,6 +1,6 @@
 import unittest
 
-from news_monitor import _geography_match, _issue_suggestion, _make_record, FIELDS
+from news_monitor import _candidate_mentions, _geography_match, _issue_suggestion, _make_record, FIELDS
 
 
 class NewsMonitorTests(unittest.TestCase):
@@ -31,6 +31,18 @@ class NewsMonitorTests(unittest.TestCase):
     def test_issue_suggestion_is_keyword_based(self):
         issue = _issue_suggestion("New housing development planning proposal")
         self.assertEqual(issue, "Planning and housing")
+
+    def test_candidate_names_are_suggested_as_mentions_not_sentiment(self):
+        mentions = _candidate_mentions(
+            "Kew candidate Jess Wilson discussed housing with Sophie Torney."
+        )
+        self.assertEqual(mentions, ["Sophie Torney", "Jess Wilson"])
+
+    def test_candidate_fields_are_present_in_news_schema(self):
+        self.assertIn("candidate_mentions_suggested", FIELDS)
+        self.assertIn("candidate_mentions_reviewed", FIELDS)
+        self.assertIn("candidate_evidence_type", FIELDS)
+        self.assertIn("candidate_public_view_summary", FIELDS)
 
     def test_new_record_does_not_infer_sentiment(self):
         record = _make_record(
