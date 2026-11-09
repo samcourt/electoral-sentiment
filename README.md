@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.1
+# Australian Electoral Sentiment Tracker — prototype 0.4.0
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
