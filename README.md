@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.5.2
+# Australian Electoral Sentiment Tracker — prototype 0.6.0
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -16,6 +16,7 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Kew first-preference scenario model in `kew_forecast.py`, with a conditional Coalition–Labor uniform-swing scenario.
 - Separately-labelled external Kew forecast and final-two benchmarks in `data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv`.
 - Dated model snapshots in `data/kew_forecast_snapshots.csv`.
+- Separate ledgers for VEC donation disclosures, campaign activity observations, Kalshi market snapshots and Antony Green analysis notes.
 - Candidate-specific Google News discovery queries and an editorial review form that links news items to candidates and source-attributed public views.
 - Candidate coverage time series based only on reviewed, Kew-specific news items; coverage volume is not a popularity or voting-intention measure.
 - News source register in `data/news_sources.csv`, including coverage and limitations.
@@ -73,6 +74,40 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 - The model does not yet independently estimate preference transfers for Wilson–Torney, Wilson–Laird or other possible final pairs; those remain external AEF scenarios only.
 - The model has not been backtested on previous elections and does not produce its own win probabilities.
 - News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
+
+## Campaign capacity, market expectations and analyst sources (prototype 0.6)
+
+The Kew workspace adds four distinct signal collections. They are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
+
+### Disclosed donations
+
+`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. Individual donor names are not stored.
+
+The VEC says donations of $1,290 or more must generally be disclosed within 21 days. This is a partial register: smaller donations are not disclosed, records may appear with a delay, and the ledger does not reveal all money or in-kind support available to a campaign. Party or associated-entity donations cannot automatically be assigned to an individual electorate or candidate. Donations indicate disclosed financial support/capacity, not voter support or campaign effectiveness.
+
+### Campaign activity and street presence
+
+`data/kew_campaign_activity.csv` records one distinct observation per campaign activity: door-knocking sessions, street stalls, shopping-strip visits, community events, volunteer mobilisation, signage and advertising/mail.
+
+Each observation distinguishes scheduled/announced activity from campaign-reported completion, independent observation and third-party reporting. Exact volunteer and door-contact counts are stored only where the source reports them; they are not estimated from photos. A candidate with no recorded activity has a data gap, not a zero. Duplicate events and multiple posts about the same event should be consolidated during review.
+
+Activity volume indicates observable campaign effort and organisation, not whether a person contacted at the door supports that candidate. Canvassing is often geographically targeted and campaigns choose where and when to deploy volunteers, so raw counts are not directly comparable without context about the target area, timing and source coverage.
+
+### Kalshi market
+
+`campaign_signals.py` retrieves the Victorian state election winner contracts from Kalshi's public unauthenticated market-data API. The **Fetch and record latest Kalshi prices** button stores the YES bid, YES ask, midpoint, last trade, bid/ask spread, total volume, 24-hour volume and open interest in `data/kalshi_market_snapshots.csv`.
+
+The contract concerns which party or coalition wins the most seats in the Victorian Legislative Assembly. It is a statewide market, not a Kew seat market. The tracker uses the midpoint of the YES bid and ask when both are available; otherwise it uses the last trade and labels the fallback. Individual binary-contract prices are not normalized to sum to 100%. Wide spreads, low volume and low open interest should lower confidence in the market signal. Snapshots begin only when the user first fetches and records data; this tool does not reconstruct a historical price series.
+
+### Antony Green and expert analysis
+
+`data/antony_green_notes.csv` contains dated references to Antony Green's 2026 Victorian Election Pendulum, One Nation geographic analysis and candidate-number analysis. The Google News discovery collector also searches for new Antony Green articles about the Victorian election and Kew. Add further articles or updates in the analyst tab, retaining publication date, geography, key points and interpretation limits.
+
+Treat historical margins, preference-flow analysis, candidate-field commentary and geographic mapping as distinct types of evidence. An analyst's judgement should not be turned into a vote-intention percentage unless the source explicitly publishes a modelled estimate and its assumptions.
+
+### How these signals should be used
+
+The dashboard deliberately does not combine poll shares, donations, campaign activity, market prices and expert commentary into a single unvalidated "sentiment score". They measure different things and have different coverage biases. The next modelling step should test their historical relationship to election outcomes across multiple electorates and elections, then calibrate weights using out-of-sample results. Until that backtesting exists, use them as an evidence dashboard alongside the explicitly-labelled polling scenarios.
 
 ## Candidate research — Kew
 
