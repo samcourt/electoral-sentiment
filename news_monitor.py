@@ -44,6 +44,8 @@ GOOGLE_NEWS_QUERIES = [
     ("Eastsider News", 'site:eastsidernews.org.au (Kew OR Boroondara)'),
     ("Big Build Kew", 'site:bigbuild.vic.gov.au (Kew OR "Kew East")'),
     ("Boroondara Council news", 'site:boroondara.vic.gov.au Kew'),
+    ("Antony Green — Victorian election analysis", 'site:antonygreen.com.au/2026-victorian-election "Victoria"'),
+    ("Antony Green — Kew and district analysis", 'site:antonygreen.com.au (Kew OR "One Nation") Victoria 2026'),
 ]
 
 FIELDS = [
