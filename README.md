@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.4.0
+# Australian Electoral Sentiment Tracker — prototype 0.5.1
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -33,6 +33,42 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Kew polling trends, scenarios and forecast history (prototype 0.5)
+
+The Kew profile includes an exploratory polling and scenario workspace. It is intentionally transparent about what is measured, assumed and not known.
+
+### Statewide poll ledger
+
+`data/vic_state_polls_2026.csv` stores dated statewide primary-vote polls, fieldwork dates, sample sizes, reported Coalition two-party-preferred figures where available, inclusion status and source links. The dashboard shows every stored poll as a time-series observation, including excluded or superseded records for context.
+
+The default in-project average uses the latest eligible poll from each pollster and applies a 14-day exponential recency half-life multiplied by the `quality_weight` stored in the poll ledger. These quality weights are provisional project judgements, not an official rating. Internal/party-commissioned polls and superseded results are retained but excluded from the default average. The dashboard compares our average with an external published average; it does not blend the two.
+
+### Kew first-preference scenario
+
+`kew_forecast.py` starts with the March 2026 uComms Kew poll for Jess Wilson, Sophie Torney, Labor and One Nation, then adjusts the relevant party candidates by the change between the March Resolve Victorian component poll and the current weighted statewide poll average. The Greens candidate is anchored to the 2022 Kew Greens result and adjusted by statewide Greens polling change. Other candidates use historical Kew results or clearly-labelled statewide proxies where necessary.
+
+This is a deliberately simple scenario rule, not a fitted predictive model. The uComms poll was commissioned by Sophie Torney's campaign, is several months old, has incomplete reported candidate options, and has a published discrepancy for Jess Wilson (38% in The Poll Bludger versus 36% in a news.com.au report). That discrepancy is preserved in `data/kew_polls.csv`. Candidates without a defensible baseline remain unestimated; the residual vote is shown as **Unallocated / unmodelled vote** rather than being silently assigned to them.
+
+The pass-through slider allows the user to test how much statewide polling movement is assumed to transfer to Kew. Its 0.5×–1.5× sensitivity range is not a statistical confidence interval.
+
+### Conditional Coalition–Labor scenario
+
+The uniform-swing scenario applies the current statewide Coalition two-party-preferred share change to the 2022 Kew final Liberal–Labor preference distribution. It is conditional on Jess Wilson and David Sun being the final two candidates. It does not estimate which candidates will finish first and second, and it should not be called the likely final 2CP when an independent or One Nation candidate could finish ahead of Labor.
+
+`data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv` hold a separately-labelled AEF Kew forecast benchmark dated 30 October 2026. Those values are not produced by this project. They provide a comparison point and should be rechecked for date/freshness before interpretation.
+
+### Forecast history
+
+Use **Record today's Kew forecast snapshot** to append a dated model snapshot to `data/kew_forecast_snapshots.csv`. The dashboard then charts saved snapshots over time. The app writes this file in the Codespace working tree; commit it to GitHub periodically to retain the forecast history.
+
+### Current model limitations
+
+- There is only one known seat-level Kew poll in the data, commissioned by a candidate campaign, and it is old and incompletely reported.
+- Statewide polling is not a direct measurement of Kew candidate support.
+- The model does not yet estimate preference transfers for Wilson–Torney, Wilson–Laird or other possible final pairs.
+- The model has not been backtested on previous elections and does not produce its own win probabilities.
+- News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
 
 ## Candidate research — Kew
 
