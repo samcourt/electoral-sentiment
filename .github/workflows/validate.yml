@@ -25,7 +25,7 @@ jobs:
 
       - name: Compile application modules
         run: |
-          python -m py_compile app.py news_monitor.py ingest_vec_2022.py
+          python -m py_compile app.py news_monitor.py kew_forecast.py ingest_vec_2022.py
 
       - name: Run news collector unit tests
         run: python -m unittest discover -s tests -v
@@ -70,4 +70,30 @@ jobs:
           assert {row["poll_id"] for row in polls} == {"UCOMMS-KEW-MAR2026"}
           assert all(int(row["sample_size"]) == 914 for row in polls)
           print(f"Validated {len(polls)} reported poll-option records with methodology caveats.")
+
+          state_poll_path = Path("data/vic_state_polls_2026.csv")
+          with state_poll_path.open(encoding="utf-8-sig", newline="") as handle:
+              state_polls = list(csv.DictReader(handle))
+          assert len(state_polls) >= 8, "Expected a multi-poll Victorian statewide ledger"
+          assert any(row["poll_id"] == "RESOLVE-NOV2026" for row in state_polls)
+          assert any(row["poll_id"] == "DEMOS-NOV2026" for row in state_polls)
+          for row in state_polls:
+              if row["average_eligible"].lower() == "true":
+                  shares = [
+                      float(row[key]) for key in
+                      ["alp_pct", "coalition_pct", "one_nation_pct", "greens_pct", "others_pct"]
+                  ]
+                  assert abs(sum(shares) - 100) < 0.11, (row["poll_id"], shares)
+          print(f"Validated {len(state_polls)} Victorian statewide poll records.")
+
+          forecast_path = Path("data/kew_external_forecast_benchmarks.csv")
+          with forecast_path.open(encoding="utf-8-sig", newline="") as handle:
+              external_forecasts = list(csv.DictReader(handle))
+          assert any(row["candidate_name"] == "Jess Wilson" for row in external_forecasts)
+
+          snapshot_path = Path("data/kew_forecast_snapshots.csv")
+          with snapshot_path.open(encoding="utf-8-sig", newline="") as handle:
+              snapshot_reader = csv.DictReader(handle)
+              assert "snapshot_date" in snapshot_reader.fieldnames
+          print("Validated Kew external forecast benchmark and snapshot ledger.")
           PY
