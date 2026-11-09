@@ -12,6 +12,8 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Official 2026 Kew candidate register in `data/kew_2026_candidates.csv` (10 candidates, VEC ballot order).
 - Official 2022 Kew first-preference and final preference-distribution baseline in `data/kew_2022_results.csv`.
 - One published March 2026 Kew uComms poll record in `data/kew_polls.csv`, including sample size, commissioning disclosure, a 36%/38% reported discrepancy for Jess Wilson and missing-methodology caveats.
+- Structured poll-methodology disclosure fields in `data/vic_state_polls_2026.csv` for sample frame, recruitment, weighting, response rate, effective sample size and reported margin of error.
+- Curated survey-methodology research references in `data/polling_methodology_notes.csv`.
 - Dated Victorian statewide polling ledger in `data/vic_state_polls_2026.csv`, including eligibility flags and quality weights.
 - Kew first-preference scenario model in `kew_forecast.py`, with a conditional Coalition–Labor uniform-swing scenario.
 - Separately-labelled external Kew forecast and final-two benchmarks in `data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv`.
@@ -75,13 +77,13 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 - The model has not been backtested on previous elections and does not produce its own win probabilities.
 - News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
 
-## Campaign capacity, market expectations and analyst sources (prototype 0.6)
+## Campaign capacity, market expectations and analyst sources (prototype 0.6.2)
 
 The Kew workspace adds four distinct signal collections. They are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
 
 ### Disclosed donations
 
-`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. Individual donor names are not stored.
+`data/kew_campaign_donations.csv` stores manually reviewed records from the VEC public disclosure register. The dashboard records recipient, disclosed amount, donation date, disclosure date, recipient type, donor category and geographic scope. It does not store individual donor names. Individual donor names are not stored.
 
 The VEC says donations of $1,290 or more must generally be disclosed within 21 days. This is a partial register: smaller donations are not disclosed, records may appear with a delay, and the ledger does not reveal all money or in-kind support available to a campaign. Party or associated-entity donations cannot automatically be assigned to an individual electorate or candidate. Donations indicate disclosed financial support/capacity, not voter support or campaign effectiveness.
 
