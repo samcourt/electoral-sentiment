@@ -25,7 +25,7 @@ jobs:
 
       - name: Compile application modules
         run: |
-          python -m py_compile app.py news_monitor.py kew_forecast.py ingest_vec_2022.py
+          python -m py_compile app.py news_monitor.py kew_forecast.py campaign_signals.py ingest_vec_2022.py
 
       - name: Run news collector unit tests
         run: python -m unittest discover -s tests -v
@@ -96,4 +96,18 @@ jobs:
               snapshot_reader = csv.DictReader(handle)
               assert "snapshot_date" in snapshot_reader.fieldnames
           print("Validated Kew external forecast benchmark and snapshot ledger.")
+
+          for relative in [
+              "data/kew_campaign_donations.csv",
+              "data/kew_campaign_activity.csv",
+              "data/kalshi_market_snapshots.csv",
+          ]:
+              with Path(relative).open(encoding="utf-8-sig", newline="") as handle:
+                  reader = csv.DictReader(handle)
+                  assert reader.fieldnames, f"Missing header in {relative}"
+          with Path("data/antony_green_notes.csv").open(encoding="utf-8-sig", newline="") as handle:
+              analyst_notes = list(csv.DictReader(handle))
+          assert len(analyst_notes) >= 3, "Expected curated Antony Green source notes"
+          assert any(row["published_date"] == "2026-11-09" for row in analyst_notes)
+          print("Validated campaign-signal ledgers and expert-analysis references.")
           PY
