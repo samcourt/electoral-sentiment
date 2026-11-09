@@ -495,12 +495,6 @@ if jurisdiction == "Victoria":
                         if not KEW_CANDIDATES.empty else []
                     )
                     with st.form("kew_add_donation_form"):
-                        donation_electorate = st.selectbox(
-                            "Electorate",
-                            DISTRICTS["district"].astype(str).tolist(),
-                            index=(DISTRICTS["district"].astype(str).tolist().index("Kew")
-                                   if "Kew" in DISTRICTS["district"].astype(str).tolist() else 0),
-                        )
                         donation_date_value = st.date_input(
                             "Donation date", value=LOCAL_TODAY, key="donation_date"
                         )
@@ -585,7 +579,7 @@ if jurisdiction == "Victoria":
                                 "source_url": donation_source,
                                 "source_note": donation_note,
                                 "recorded_at": sydney_now(),
-                                "electorate": donation_electorate,
+                                "electorate": "Kew",
                             },
                             DONATION_FIELDS,
                         )
@@ -668,12 +662,6 @@ if jurisdiction == "Victoria":
 
                 with st.expander("Record a campaign activity observation"):
                     with st.form("kew_add_activity_form"):
-                        activity_electorate = st.selectbox(
-                            "Electorate",
-                            DISTRICTS["district"].astype(str).tolist(),
-                            index=(DISTRICTS["district"].astype(str).tolist().index("Kew")
-                                   if "Kew" in DISTRICTS["district"].astype(str).tolist() else 0),
-                        )
                         activity_candidate = st.selectbox(
                             "Candidate / campaign",
                             candidate_options + ["Party / multi-candidate campaign"],
@@ -748,7 +736,7 @@ if jurisdiction == "Victoria":
                                 "activity_id": activity_id,
                                 "activity_date": activity_date_value.isoformat(),
                                 "recorded_at": sydney_now(),
-                                "electorate": activity_electorate,
+                                "electorate": "Kew",
                                 "candidate_name": activity_candidate,
                                 "party": activity_party,
                                 "activity_type": activity_kind,
