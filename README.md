@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.6.0
+# Australian Electoral Sentiment Tracker — prototype 0.6.3
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -77,9 +77,9 @@ Use **Record today's Kew forecast snapshot** to append a dated model snapshot to
 - The model has not been backtested on previous elections and does not produce its own win probabilities.
 - News coverage and source-attributed public views are not used as vote-share inputs until they have a sufficiently large, reviewed and historically validated dataset.
 
-## Campaign capacity, market expectations and analyst sources (prototype 0.6.2)
+## Campaign capacity, market expectations and analyst sources (prototype 0.6.3)
 
-The Kew workspace adds four distinct signal collections. They are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
+The Kew workspace adds four distinct signal collections. They are currently a Kew pilot, with an electorate key in the donation and activity ledgers to support a later rollout across Victoria's 88 seats. The entry interface remains locked to Kew until a verified statewide candidate register is available. The signals are displayed separately and do not automatically change the candidate vote-share scenarios. Their presence, absence or volume should not be interpreted as an estimate of voter preference.
 
 ### Disclosed donations
 
