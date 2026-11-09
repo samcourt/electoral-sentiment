@@ -9,6 +9,10 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail, monthly evidence counts and separately reported consultation response figures. The app opens on Kew by default.
 - Local news discovery pipeline in `news_monitor.py`, using eight Google News RSS searches plus direct Boroondara newsroom and Victoria's Big Build work-notice indexes.
 - Five manually sourced Kew news leads in `data/news_articles.csv` to seed the review queue.
+- Official 2026 Kew candidate register in `data/kew_2026_candidates.csv` (10 candidates, VEC ballot order).
+- Official 2022 Kew first-preference and final preference-distribution baseline in `data/kew_2022_results.csv`.
+- Candidate-specific Google News discovery queries and an editorial review form that links news items to candidates and source-attributed public views.
+- Candidate coverage time series based only on reviewed, Kew-specific news items; coverage volume is not a popularity or voting-intention measure.
 - News source register in `data/news_sources.csv`, including coverage and limitations.
 - Structured consultation fields include support/opposition percentages, conditional support, unsure responses, response counts, survey counts, written submissions, recorded contributions and page views. Blank fields mean not published/not available; they are not zero.
 - Victoria's eight Legislative Council regions as a separate view.
@@ -28,6 +32,14 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Candidate research — Kew
+
+`data/kew_2026_candidates.csv` contains the ten candidates in the official VEC ballot order. Candidate-specific Google News RSS searches are added to the local news collector. Exact-name matches are suggestions only and must be checked against the article.
+
+`data/kew_2022_results.csv` stores the official 2022 first-preference result for each candidate and the final preference distribution. In 2022, the final distribution was between Jess Wilson (Liberal) and Lucy Skelton (Labor): 53.98% to 46.02%. The early booth-level 2CP count was not the same as the final electorate-wide preference distribution. This historical record is not a current estimate.
+
+In the Kew news review form, select the candidates directly mentioned, classify the type of candidate-related evidence, and summarise any public view with attribution. The candidate panel charts the volume of reviewed Kew-specific news items over time and lists source-attributed evidence. It does not calculate candidate sentiment scores, projected first-preference shares, 2PP/2CP forecasts or a projected winner. Coverage volume is not popularity, support or voting intention. Published polls and final electoral results may be displayed separately with their source, date, geography and measurement type.
 
 ## Local news monitoring — Kew pilot
 
