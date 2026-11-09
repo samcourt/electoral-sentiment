@@ -453,9 +453,9 @@ if jurisdiction == "Victoria":
                         col.metric(label, f"{average[key]:.1f}%")
                     if state_average["coalition_tpp_average"] is not None:
                         st.metric(
-                            "Weighted Coalition two-party-preferred average",
+                            "Weighted statewide Coalition–Labor two-party-preferred (2PP) average",
                             f"{state_average['coalition_tpp_average']:.1f}%",
-                            help="Calculated only from eligible polls that published a Coalition–Labor 2PP figure.",
+                            help="Calculated only from eligible statewide polls that published a Coalition–Labor 2PP figure; this is not Kew 2CP.",
                         )
 
                     st.markdown("##### Our polling average versus an external benchmark")
@@ -688,7 +688,7 @@ if jurisdiction == "Victoria":
                         "his possible vote and all other unmodelled/unreported vote."
                     )
 
-                    st.markdown("##### Conditional Liberal–Labor two-party scenario")
+                    st.markdown("##### Conditional Wilson–Sun two-candidate-preferred (2CP) scenario")
                     swing_multiplier = st.slider(
                         "Kew uniform-swing multiplier",
                         min_value=0.5,
@@ -716,7 +716,7 @@ if jurisdiction == "Victoria":
                             f"{tpp_scenario['coalition_share_pct'] - tpp_scenario['labor_share_pct']:.1f} pts"
                         )
                         st.caption(
-                            "Conditional scenario only: assumes Wilson and Sun are the final two, "
+                            "Conditional 2CP scenario only: assumes Wilson and Sun are the final two, "
                             "and applies a uniform statewide two-party swing to Kew's 2022 final "
                             "preference distribution. The actual final two could include Sophie Torney "
                             "or David Laird, in which case this is not the relevant count."
