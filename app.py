@@ -67,7 +67,10 @@ with st.sidebar:
         level = st.radio("Chamber", ["Legislative Assembly", "Legislative Council"])
         if level == "Legislative Assembly":
             district_names = DISTRICTS["district"].dropna().astype(str).tolist()
-            district = st.selectbox("Electorate", ["All districts"] + district_names)
+            electorate_options = ["All districts"] + district_names
+            # Open on the Kew pilot so its seed observations are visible immediately.
+            default_electorate_index = electorate_options.index("Kew") if "Kew" in electorate_options else 0
+            district = st.selectbox("Electorate", electorate_options, index=default_electorate_index)
         else:
             district = st.selectbox(
                 "Region",
