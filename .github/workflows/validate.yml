@@ -97,14 +97,27 @@ jobs:
               assert "snapshot_date" in snapshot_reader.fieldnames
           print("Validated Kew external forecast benchmark and snapshot ledger.")
 
-          for relative in [
-              "data/kew_campaign_donations.csv",
-              "data/kew_campaign_activity.csv",
-              "data/kalshi_market_snapshots.csv",
-          ]:
+          expected_headers = {
+              "data/kew_campaign_donations.csv": {
+                  "record_id", "donation_date", "recipient_name", "amount_aud", "electorate"
+              },
+              "data/kew_campaign_activity.csv": {
+                  "activity_id", "activity_date", "candidate_name", "activity_type", "electorate"
+              },
+              "data/kalshi_market_snapshots.csv": {
+                  "snapshot_at", "market_ticker", "implied_chance_pct", "volume", "open_interest"
+              },
+              "data/polling_methodology_notes.csv": {
+                  "study_date", "source", "method_issue", "interpretation_limit", "source_url"
+              },
+          }
+          for relative, required_fields in expected_headers.items():
               with Path(relative).open(encoding="utf-8-sig", newline="") as handle:
                   reader = csv.DictReader(handle)
                   assert reader.fieldnames, f"Missing header in {relative}"
+                  assert required_fields.issubset(set(reader.fieldnames)), (
+                      relative, reader.fieldnames, required_fields
+                  )
           with Path("data/antony_green_notes.csv").open(encoding="utf-8-sig", newline="") as handle:
               analyst_notes = list(csv.DictReader(handle))
           assert len(analyst_notes) >= 3, "Expected curated Antony Green source notes"
