@@ -1472,5 +1472,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.5.1 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.5.2 · Built with Streamlit · No personal voter data is collected."
 )
