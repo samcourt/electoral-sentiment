@@ -534,9 +534,14 @@ if jurisdiction == "Victoria":
                         )
                         amount_value = st.number_input(
                             "Disclosed donation amount (AUD)",
-                            min_value=1290.0,
+                            min_value=1250.0,
                             value=1290.0,
                             step=100.0,
+                            help=(
+                                "The general disclosure threshold is $1,290. A $1,250 threshold "
+                                "applied to the 15 April–9 June 2026 transition period. Only enter "
+                                "records actually visible in the VEC public disclosure register."
+                            ),
                         )
                         donation_scope = st.selectbox(
                             "Geographic scope",
