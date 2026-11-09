@@ -5,13 +5,14 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 ## What's included
 
 - Streamlit dashboard with a searchable register of Victoria's 88 current Legislative Assembly districts.
+- Kew pilot evidence ledger loaded from `data/kew_seed_observations.csv`, with filters for issue, evidence type and confidence, source links, observation detail and monthly evidence counts.
 - Victoria's eight Legislative Council regions as a separate view.
 - Official 2022 statewide first-preference baseline (historical context only).
 - Canonical PostgreSQL schema for jurisdictions, election cycles, electorates, election results, observations, sentiment classifications and weekly indicators.
 - VEC workbook ingestion helper that downloads and inspects the official 2022 district-results workbook without guessing its internal schema.
 - Source register and data-quality notes.
 
-**Important:** no live sentiment feed, district-level 2022 result import, or boundary geometry is included yet. The app explicitly labels those gaps. It does not create synthetic scores or infer voting intention.
+**Important:** no live sentiment feed, district-level 2022 result import, or boundary geometry is included yet. The Kew observations are a manually curated seed dataset; some are reports of constituent concerns or consultation summaries rather than direct, representative resident measurements. The app explicitly labels those gaps. It does not create synthetic scores or infer voting intention.
 
 ## Run locally
 
@@ -58,6 +59,7 @@ Use the current VEC district/region boundaries for the relevant election cycle. 
 | Source | Use | Geography | Status |
 |---|---|---|---|
 | VEC 2022 results | Historical district first preferences and preference counts | District / voting centre | Workbook download helper included |
+| Kew seed observations | Six initial source-linked community, parliamentary and council observations | Kew and explicitly labelled Boroondara-wide proxy | Loaded into the Kew profile; seed evidence only, not representative polling |
 | VEC 2026 election page | Election date, candidates and official notices | District / region | Manual source |
 | VEC district register | Current district names and profile links | District | 88 districts loaded |
 | VEC 2026 candidate spreadsheet | Candidate names and affiliations | District / region | Source registered; import pending |
