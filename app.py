@@ -1,7 +1,15 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+from datetime import date
 from news_monitor import collect_news
+from kew_forecast import (
+    MODEL_VERSION,
+    build_kew_candidate_scenario,
+    calculate_kew_labor_coalition_scenario,
+    calculate_statewide_poll_average,
+    make_snapshot_rows,
+)
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
@@ -12,6 +20,11 @@ RESULTS_PATH = DATA_DIR / "vic_2022_district_results.csv"
 KEW_CANDIDATES_PATH = DATA_DIR / "kew_2026_candidates.csv"
 KEW_RESULTS_PATH = DATA_DIR / "kew_2022_results.csv"
 KEW_POLLS_PATH = DATA_DIR / "kew_polls.csv"
+VIC_STATE_POLLS_PATH = DATA_DIR / "vic_state_polls_2026.csv"
+KEW_EXTERNAL_FORECAST_PATH = DATA_DIR / "kew_external_forecast_benchmarks.csv"
+KEW_EXTERNAL_2CP_PATH = DATA_DIR / "kew_external_2cp_benchmarks.csv"
+VIC_POLL_AVERAGE_BENCHMARK_PATH = DATA_DIR / "vic_poll_average_benchmarks.csv"
+KEW_FORECAST_SNAPSHOTS_PATH = DATA_DIR / "kew_forecast_snapshots.csv"
 
 st.set_page_config(
     page_title="Electoral Sentiment Tracker",
@@ -126,12 +139,36 @@ def load_kew_polls():
     return polls
 
 
+@st.cache_data
+def load_kew_external_forecast():
+    if not KEW_EXTERNAL_FORECAST_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(KEW_EXTERNAL_FORECAST_PATH, keep_default_na=False)
+
+
+@st.cache_data
+def load_kew_external_2cp():
+    if not KEW_EXTERNAL_2CP_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(KEW_EXTERNAL_2CP_PATH, keep_default_na=False)
+
+
+@st.cache_data
+def load_vic_poll_average_benchmark():
+    if not VIC_POLL_AVERAGE_BENCHMARK_PATH.exists():
+        return pd.DataFrame()
+    return pd.read_csv(VIC_POLL_AVERAGE_BENCHMARK_PATH, keep_default_na=False)
+
+
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
 OBSERVATIONS = load_observations()
 NEWS_ARTICLES = load_news_articles()
 KEW_CANDIDATES = load_kew_candidates()
 KEW_HISTORICAL_RESULTS = load_kew_historical_results()
 KEW_POLLS = load_kew_polls()
+KEW_EXTERNAL_FORECAST = load_kew_external_forecast()
+KEW_EXTERNAL_2CP = load_kew_external_2cp()
+VIC_POLL_AVERAGE_BENCHMARK = load_vic_poll_average_benchmark()
 
 st.title("Australian Electoral Sentiment Tracker")
 st.caption("Research prototype · Victoria 2026 live case · Federal and NSW expansion planned")
