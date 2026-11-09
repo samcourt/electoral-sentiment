@@ -266,6 +266,58 @@ def _fetch_boroondara_news(session: requests.Session):
     return items
 
 
+def _fetch_big_build_notices(session: requests.Session):
+    """Collect directly linked Kew/Kew East work notices from the Big Build index."""
+    response = session.get(BIG_BUILD_WORK_NOTICES_URL, timeout=(8, 20))
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    items = []
+    seen = set()
+    for anchor in soup.find_all("a", href=True):
+        href = anchor["href"]
+        absolute_url = urljoin(BIG_BUILD_WORK_NOTICES_URL, href)
+        path = urlparse(absolute_url).path.casefold()
+        title = anchor.get_text(" ", strip=True)
+        if (
+            "/work-notices/" not in path
+            or path.rstrip("/") == urlparse(BIG_BUILD_WORK_NOTICES_URL).path.rstrip("/")
+            or "kew" not in (path + " " + title.casefold())
+            or absolute_url in seen
+            or len(title) < 8
+        ):
+            continue
+        seen.add(absolute_url)
+        parent = anchor.find_parent(["article", "li"])
+        if parent is None:
+            parent = anchor.parent
+        context = parent.get_text(" ", strip=True) if parent else title
+        date_match = re.search(
+            r"\\b(\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{4})\\b", context
+        )
+        published = ""
+        if date_match:
+            for date_format in ("%d %B %Y", "%d %b %Y"):
+                try:
+                    published = datetime.strptime(
+                        date_match.group(1), date_format
+                    ).replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
+                    break
+                except ValueError:
+                    continue
+        items.append(_make_record(
+            title=title,
+            publisher="Victoria's Big Build",
+            published_at=published,
+            source_url=absolute_url,
+            summary=context,
+            source_type="Official infrastructure notice",
+            collection_method="Big Build work notices index",
+            feed_name="Victoria's Big Build work notices",
+            feed_query="Direct index links matching Kew or Kew East",
+        ))
+    return items
+
+
 def _read_existing(path: Path) -> dict[str, dict]:
     if not path.exists():
         return {}
@@ -319,6 +371,13 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
     except (requests.RequestException, ValueError) as exc:
         errors.append(f"City of Boroondara newsroom: {type(exc).__name__}: {exc}")
 
+    try:
+        big_build_items = _fetch_big_build_notices(session)
+        discovered.extend(big_build_items)
+        successes += 1
+    except (requests.RequestException, ValueError) as exc:
+        errors.append(f"Victoria's Big Build work notices: {type(exc).__name__}: {exc}")
+
     def natural_key(record):
         return (
             re.sub(r"\W+", " ", record.get("title", "").casefold()).strip(),
@@ -370,7 +429,7 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
             writer.writeheader()
         writer.writerow({
             "collected_at": now,
-            "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 1,
+            "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 2,
             "feeds_succeeded": successes,
             "items_discovered": len(discovered),
             "new_items": new_count,
