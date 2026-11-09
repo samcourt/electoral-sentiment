@@ -383,6 +383,407 @@ if jurisdiction == "Victoria":
                 else:
                     st.info("No published Kew seat-level poll has been loaded.")
 
+            st.markdown("#### Polling trends and Kew forecast workspace")
+            st.caption(
+                "This is an exploratory research model. It separates published poll results, "
+                "modelled scenarios and external forecasts. It is not yet calibrated against "
+                "historical forecast errors."
+            )
+
+            if not VIC_STATE_POLLS_PATH.exists():
+                st.warning("The statewide polling ledger is missing.")
+            else:
+                try:
+                    state_average = calculate_statewide_poll_average(
+                        VIC_STATE_POLLS_PATH,
+                        as_of=date.today(),
+                        half_life_days=14,
+                    )
+                    poll_history = pd.read_csv(VIC_STATE_POLLS_PATH, keep_default_na=False)
+                    for column in [
+                        "alp_pct", "coalition_pct", "one_nation_pct",
+                        "greens_pct", "others_pct", "coalition_tpp_pct",
+                        "sample_size"
+                    ]:
+                        poll_history[column] = pd.to_numeric(
+                            poll_history[column], errors="coerce"
+                        )
+                    poll_history["fieldwork_end"] = pd.to_datetime(
+                        poll_history["fieldwork_end"], errors="coerce"
+                    )
+                    poll_history = poll_history.sort_values("fieldwork_end")
+
+                    st.markdown("##### Victorian statewide primary-vote trend")
+                    trend_columns = [
+                        "alp_pct", "coalition_pct", "one_nation_pct",
+                        "greens_pct", "others_pct"
+                    ]
+                    trend_data = (
+                        poll_history.dropna(subset=["fieldwork_end"])
+                        .set_index("fieldwork_end")[trend_columns]
+                        .rename(columns={
+                            "alp_pct": "Labor",
+                            "coalition_pct": "Coalition",
+                            "one_nation_pct": "One Nation",
+                            "greens_pct": "Greens",
+                            "others_pct": "Others",
+                        })
+                    )
+                    st.line_chart(trend_data)
+                    st.caption(
+                        "Each point is a published poll, not a weekly opinion measure. "
+                        "Excluded and superseded polls remain visible in the trend history, "
+                        "but are not all used in the current weighted average."
+                    )
+
+                    average = state_average["primary_average"]
+                    avg_cols = st.columns(5)
+                    for col, label, key in zip(
+                        avg_cols,
+                        ["Labor", "Coalition", "One Nation", "Greens", "Others"],
+                        ["Labor", "Liberal–National Coalition", "One Nation", "Greens", "Others"],
+                    ):
+                        col.metric(label, f"{average[key]:.1f}%")
+                    if state_average["coalition_tpp_average"] is not None:
+                        st.metric(
+                            "Weighted Coalition two-party-preferred average",
+                            f"{state_average['coalition_tpp_average']:.1f}%",
+                            help="Calculated only from eligible polls that published a Coalition–Labor 2PP figure.",
+                        )
+
+                    st.markdown("##### Our polling average versus an external benchmark")
+                    comparison_rows = [
+                        {
+                            "Party": party,
+                            "Our weighted average (%)": value,
+                            "Earth Elects benchmark (%)": (
+                                float(VIC_POLL_AVERAGE_BENCHMARK.iloc[0][column])
+                                if not VIC_POLL_AVERAGE_BENCHMARK.empty else None
+                            ),
+                        }
+                        for party, column, value in [
+                            ("Labor", "alp_pct", average["Labor"]),
+                            ("Coalition", "coalition_pct", average["Liberal–National Coalition"]),
+                            ("One Nation", "one_nation_pct", average["One Nation"]),
+                            ("Greens", "greens_pct", average["Greens"]),
+                            ("Others", "others_pct", average["Others"]),
+                        ]
+                    ]
+                    st.dataframe(
+                        pd.DataFrame(comparison_rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(
+                        state_average["method"] +
+                        " Our pollster quality weights are provisional project assumptions. "
+                        "The external average is shown for comparison, not blended into our calculation."
+                    )
+
+                    with st.expander("Poll ledger and source records"):
+                        display_polls = poll_history[
+                            [
+                                "pollster", "fieldwork_start", "fieldwork_end",
+                                "sample_size", "alp_pct", "coalition_pct",
+                                "one_nation_pct", "greens_pct", "others_pct",
+                                "coalition_tpp_pct", "average_eligible", "source_url"
+                            ]
+                        ].rename(columns={
+                            "pollster": "Pollster",
+                            "fieldwork_start": "Fieldwork start",
+                            "fieldwork_end": "Fieldwork end",
+                            "sample_size": "Sample",
+                            "alp_pct": "Labor",
+                            "coalition_pct": "Coalition",
+                            "one_nation_pct": "One Nation",
+                            "greens_pct": "Greens",
+                            "others_pct": "Others",
+                            "coalition_tpp_pct": "Coalition 2PP",
+                            "average_eligible": "In our average",
+                            "source_url": "Source",
+                        })
+                        st.dataframe(
+                            display_polls,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Source": st.column_config.LinkColumn(
+                                    "Source", display_text="Open source ↗"
+                                )
+                            },
+                        )
+
+                    st.markdown("##### Kew candidate first-preference scenario")
+                    pass_through = st.slider(
+                        "Apply this fraction of statewide polling movement to Kew candidates",
+                        min_value=0.0,
+                        max_value=1.5,
+                        value=1.0,
+                        step=0.1,
+                        help=(
+                            "1.0 applies the full change between the March Resolve state poll "
+                            "and our current weighted statewide average to the matching Kew party "
+                            "candidates. 0.0 holds their March/local or historical anchors unchanged. "
+                            "This is a scenario control, not a statistically fitted parameter."
+                        ),
+                        key="kew_poll_swing_passthrough",
+                    )
+                    candidate_scenario = build_kew_candidate_scenario(
+                        KEW_CANDIDATES_PATH,
+                        KEW_RESULTS_PATH,
+                        KEW_POLLS_PATH,
+                        state_average,
+                        VIC_STATE_POLLS_PATH,
+                        pass_through=pass_through,
+                    )
+                    low_scenario = build_kew_candidate_scenario(
+                        KEW_CANDIDATES_PATH,
+                        KEW_RESULTS_PATH,
+                        KEW_POLLS_PATH,
+                        state_average,
+                        VIC_STATE_POLLS_PATH,
+                        pass_through=0.5,
+                    )
+                    high_scenario = build_kew_candidate_scenario(
+                        KEW_CANDIDATES_PATH,
+                        KEW_RESULTS_PATH,
+                        KEW_POLLS_PATH,
+                        state_average,
+                        VIC_STATE_POLLS_PATH,
+                        pass_through=1.5,
+                    )
+                    low_map = dict(zip(
+                        low_scenario["candidate_name"], low_scenario["primary_estimate_pct"]
+                    ))
+                    high_map = dict(zip(
+                        high_scenario["candidate_name"], high_scenario["primary_estimate_pct"]
+                    ))
+                    candidate_scenario["sensitivity_low_pct"] = candidate_scenario[
+                        "candidate_name"
+                    ].map({
+                        name: min(
+                            value,
+                            high_map.get(name) if pd.notna(high_map.get(name)) else value,
+                        )
+                        for name, value in low_map.items()
+                        if pd.notna(value)
+                    })
+                    candidate_scenario["sensitivity_high_pct"] = candidate_scenario[
+                        "candidate_name"
+                    ].map({
+                        name: max(
+                            value,
+                            high_map.get(name) if pd.notna(high_map.get(name)) else value,
+                        )
+                        for name, value in low_map.items()
+                        if pd.notna(value)
+                    })
+
+                    candidate_chart = candidate_scenario.dropna(
+                        subset=["primary_estimate_pct"]
+                    ).set_index("candidate_name")[["primary_estimate_pct"]]
+                    candidate_chart = candidate_chart.rename(
+                        columns={"primary_estimate_pct": "Scenario first preference (%)"}
+                    )
+                    st.bar_chart(candidate_chart)
+                    candidate_display = candidate_scenario[
+                        [
+                            "candidate_name", "party", "primary_estimate_pct",
+                            "sensitivity_low_pct", "sensitivity_high_pct",
+                            "estimate_status", "estimate_basis"
+                        ]
+                    ].rename(columns={
+                        "candidate_name": "Candidate",
+                        "party": "Party",
+                        "primary_estimate_pct": "Scenario estimate (%)",
+                        "sensitivity_low_pct": "Sensitivity low (%)",
+                        "sensitivity_high_pct": "Sensitivity high (%)",
+                        "estimate_status": "Status",
+                        "estimate_basis": "Basis / limitation",
+                    })
+                    st.dataframe(
+                        candidate_display,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(
+                        "Sensitivity low/high shows the effect of changing statewide polling "
+                        "pass-through from 0.5× to 1.5×. It is not a statistical confidence interval. "
+                        "Man Liang is not separately estimated; the unallocated residual includes "
+                        "his possible vote and all other unmodelled/unreported vote."
+                    )
+
+                    st.markdown("##### Conditional Liberal–Labor two-party scenario")
+                    swing_multiplier = st.slider(
+                        "Kew uniform-swing multiplier",
+                        min_value=0.5,
+                        max_value=1.5,
+                        value=1.0,
+                        step=0.1,
+                        help="1.0 applies the full statewide Coalition 2PP share change to the 2022 Kew Liberal–Labor final distribution.",
+                        key="kew_uniform_swing_multiplier",
+                    )
+                    tpp_scenario = calculate_kew_labor_coalition_scenario(
+                        state_average, uniform_swing_multiplier=swing_multiplier
+                    )
+                    if tpp_scenario.get("available"):
+                        t1, t2, t3 = st.columns(3)
+                        t1.metric(
+                            "Jess Wilson (Liberal)",
+                            f"{tpp_scenario['coalition_share_pct']:.1f}%"
+                        )
+                        t2.metric(
+                            "David Sun (Labor)",
+                            f"{tpp_scenario['labor_share_pct']:.1f}%"
+                        )
+                        t3.metric(
+                            "Scenario margin",
+                            f"{tpp_scenario['coalition_share_pct'] - tpp_scenario['labor_share_pct']:.1f} pts"
+                        )
+                        st.caption(
+                            "Conditional scenario only: assumes Wilson and Sun are the final two, "
+                            "and applies a uniform statewide two-party swing to Kew's 2022 final "
+                            "preference distribution. The actual final two could include Sophie Torney "
+                            "or David Laird, in which case this is not the relevant count."
+                        )
+                        st.caption(
+                            f"Sensitivity at 0.5×–1.5× statewide movement: "
+                            f"{tpp_scenario['sensitivity_low_pct']:.1f}%–"
+                            f"{tpp_scenario['sensitivity_high_pct']:.1f}% for Wilson. "
+                            "This is a scenario range, not a confidence interval."
+                        )
+
+                    if not KEW_EXTERNAL_FORECAST.empty:
+                        st.markdown("##### External Kew forecast benchmark")
+                        st.caption(
+                            "AEF's published forecast, last updated 30 October 2026. "
+                            "This is a separate external model, not an output of our tracker."
+                        )
+                        ext = KEW_EXTERNAL_FORECAST.copy()
+                        ext_display = ext[
+                            [
+                                "candidate_name", "party", "first_preference_median_pct",
+                                "first_preference_low_pct", "first_preference_high_pct",
+                                "win_probability_pct"
+                            ]
+                        ].rename(columns={
+                            "candidate_name": "Candidate",
+                            "party": "Party",
+                            "first_preference_median_pct": "Primary median (%)",
+                            "first_preference_low_pct": "Low range (%)",
+                            "first_preference_high_pct": "High range (%)",
+                            "win_probability_pct": "External win probability (%)",
+                        })
+                        st.dataframe(
+                            ext_display,
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                        st.markdown(
+                            "[Open AEF's Kew forecast and methodology ↗]"
+                            "(https://www.aeforecasts.com/seat/2026vic/regular/kew/)"
+                        )
+
+                    if not KEW_EXTERNAL_2CP.empty:
+                        st.markdown("##### External final-two scenarios")
+                        st.dataframe(
+                            KEW_EXTERNAL_2CP[
+                                [
+                                    "scenario", "final_pair_candidate_a", "candidate_a_pct",
+                                    "final_pair_candidate_b", "candidate_b_pct",
+                                    "scenario_probability_pct"
+                                ]
+                            ].rename(columns={
+                                "scenario": "Possible final pair",
+                                "final_pair_candidate_a": "Candidate A",
+                                "candidate_a_pct": "Candidate A (%)",
+                                "final_pair_candidate_b": "Candidate B",
+                                "candidate_b_pct": "Candidate B (%)",
+                                "scenario_probability_pct": "Probability of this pair (%)",
+                            }),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                        st.caption(
+                            "These final-pair probabilities are AEF's published simulation outputs, "
+                            "not our own estimates. Our tracker does not yet have enough Kew-specific "
+                            "preference-flow evidence to make an independent final-two forecast."
+                        )
+
+                    st.markdown("##### Save and track forecast snapshots")
+                    st.caption(
+                        "Record a dated snapshot after reviewing the inputs. This lets us compare "
+                        "what the model said on each date with later updates and the final result."
+                    )
+                    if st.button("Record today's Kew forecast snapshot", key="save_kew_forecast_snapshot"):
+                        snapshot_date = date.today().isoformat()
+                        new_snapshot = make_snapshot_rows(
+                            snapshot_date, candidate_scenario, tpp_scenario
+                        )
+                        if KEW_FORECAST_SNAPSHOTS_PATH.exists():
+                            old_snapshots = pd.read_csv(
+                                KEW_FORECAST_SNAPSHOTS_PATH, keep_default_na=False
+                            )
+                            old_snapshots = old_snapshots[
+                                ~(
+                                    (old_snapshots["snapshot_date"] == snapshot_date)
+                                    & (old_snapshots["model_version"] == MODEL_VERSION)
+                                )
+                            ]
+                            combined_snapshots = pd.concat(
+                                [old_snapshots, new_snapshot], ignore_index=True
+                            )
+                        else:
+                            combined_snapshots = new_snapshot
+                        combined_snapshots.to_csv(
+                            KEW_FORECAST_SNAPSHOTS_PATH, index=False
+                        )
+                        st.success(
+                            "Forecast snapshot saved locally. Commit data/kew_forecast_snapshots.csv "
+                            "to GitHub to preserve it in the repository."
+                        )
+                        st.rerun()
+
+                    if KEW_FORECAST_SNAPSHOTS_PATH.exists():
+                        snapshots = pd.read_csv(
+                            KEW_FORECAST_SNAPSHOTS_PATH, keep_default_na=False
+                        )
+                        candidate_snapshots = snapshots[
+                            snapshots["metric_type"] == "candidate_primary_scenario"
+                        ].copy()
+                        if not candidate_snapshots.empty:
+                            snapshot_candidate_names = [
+                                name for name in candidate_snapshots["candidate_name"].unique()
+                                if name != "Unallocated / unmodelled vote"
+                            ]
+                            selected_snapshot_candidate = st.selectbox(
+                                "Candidate forecast history",
+                                snapshot_candidate_names,
+                                key="kew_snapshot_candidate",
+                            )
+                            selected_history = candidate_snapshots[
+                                candidate_snapshots["candidate_name"] == selected_snapshot_candidate
+                            ].copy()
+                            selected_history["estimate_pct"] = pd.to_numeric(
+                                selected_history["estimate_pct"], errors="coerce"
+                            )
+                            selected_history["snapshot_date"] = pd.to_datetime(
+                                selected_history["snapshot_date"], errors="coerce"
+                            )
+                            st.line_chart(
+                                selected_history.set_index("snapshot_date")[["estimate_pct"]]
+                                .rename(columns={"estimate_pct": "Recorded scenario (%)"})
+                            )
+                            st.caption(
+                                "The history begins when dated snapshots are recorded. "
+                                "No earlier forecast values are invented."
+                            )
+
+                except Exception as exc:
+                    st.error(
+                        f"Forecast workspace could not be calculated: {type(exc).__name__}: {exc}"
+                    )
+
             st.markdown("#### Sentiment and community observations")
 
             if selected_observations.empty:
@@ -999,5 +1400,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.4.1 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.5.0 · Built with Streamlit · No personal voter data is collected."
 )
