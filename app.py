@@ -1112,6 +1112,34 @@ if jurisdiction == "Victoria":
                                 )
                             },
                         )
+                        methodology_path = DATA_DIR / "polling_methodology_notes.csv"
+                        if methodology_path.exists():
+                            methodology_notes = pd.read_csv(
+                                methodology_path, keep_default_na=False
+                            )
+                            st.markdown("**Background on polling methodology**")
+                            st.dataframe(
+                                methodology_notes[
+                                    [
+                                        "study_date", "source", "method_issue",
+                                        "summary", "interpretation_limit", "source_url"
+                                    ]
+                                ].rename(columns={
+                                    "study_date": "Date",
+                                    "source": "Source",
+                                    "method_issue": "Issue",
+                                    "summary": "Finding",
+                                    "interpretation_limit": "Limit",
+                                    "source_url": "Reference",
+                                }),
+                                use_container_width=True,
+                                hide_index=True,
+                                column_config={
+                                    "Reference": st.column_config.LinkColumn(
+                                        "Reference", display_text="Read reference ↗"
+                                    )
+                                },
+                            )
 
                     st.markdown("##### Kew candidate first-preference scenario")
                     pass_through = st.slider(
@@ -2068,5 +2096,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.6.1 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.6.2 · Built with Streamlit · No personal voter data is collected."
 )
