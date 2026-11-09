@@ -437,7 +437,7 @@ def collect_news(output_path: str | Path = ARTICLES_PATH, days: int = 120) -> di
         })
 
     return {
-        "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 1,
+        "feeds_attempted": len(GOOGLE_NEWS_QUERIES) + 2,
         "feeds_succeeded": successes,
         "items_discovered": len(discovered),
         "new_items": new_count,
