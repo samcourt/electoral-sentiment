@@ -2164,57 +2164,57 @@ if jurisdiction == "Victoria":
 
             st.markdown("## Historical results and baselines")
             with st.expander("2022 Kew result — previous election only", expanded=False):
-                    st.markdown("#### 2022 historical result — baseline only")
-                    st.caption(
-                        "These are actual results from the previous state election, not estimates "
-                        "for 2026. Candidate names and the contest for the final preference "
-                        "distribution differ from the current election."
-                    )
-                    if not KEW_HISTORICAL_RESULTS.empty:
-                        historical_primary = KEW_HISTORICAL_RESULTS[
-                            KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
-                        ].copy()
-                        if not historical_primary.empty:
-                            historical_primary["share_pct"] = pd.to_numeric(
-                                historical_primary["share_pct"], errors="coerce"
-                            )
-                            st.dataframe(
-                                historical_primary[
-                                    ["candidate_name", "party", "votes", "share_pct"]
-                                ].rename(columns={
-                                    "candidate_name": "2022 candidate",
-                                    "party": "Party",
-                                    "votes": "First-preference votes",
-                                    "share_pct": "First preference (%)",
-                                }).sort_values("First preference (%)", ascending=False),
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-                        final_pair = KEW_HISTORICAL_RESULTS[
-                            KEW_HISTORICAL_RESULTS["result_measure"] == "final_preference_distribution"
-                        ].copy()
-                        if not final_pair.empty:
-                            st.markdown("**2022 final two-candidate preference distribution**")
-                            st.dataframe(
-                                final_pair[
-                                    ["candidate_name", "party", "votes", "share_pct"]
-                                ].rename(columns={
-                                    "candidate_name": "2022 candidate",
-                                    "party": "Party",
-                                    "votes": "Votes after preferences",
-                                    "share_pct": "Share (%)",
-                                }),
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-                        st.caption(
-                            "Source: Victorian Electoral Commission. In 2022 the final distribution "
-                            "was Liberal candidate Jess Wilson versus Labor candidate Lucy Skelton. "
-                            "The earlier booth-level two-candidate count was not the final distribution."
+                st.markdown("#### 2022 historical result — baseline only")
+                st.caption(
+                    "These are actual results from the previous state election, not estimates "
+                    "for 2026. Candidate names and the contest for the final preference "
+                    "distribution differ from the current election."
+                )
+                if not KEW_HISTORICAL_RESULTS.empty:
+                    historical_primary = KEW_HISTORICAL_RESULTS[
+                        KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
+                    ].copy()
+                    if not historical_primary.empty:
+                        historical_primary["share_pct"] = pd.to_numeric(
+                            historical_primary["share_pct"], errors="coerce"
                         )
-                    else:
-                        st.warning("The verified Kew 2022 result file is missing.")
-    
+                        st.dataframe(
+                            historical_primary[
+                                ["candidate_name", "party", "votes", "share_pct"]
+                            ].rename(columns={
+                                "candidate_name": "2022 candidate",
+                                "party": "Party",
+                                "votes": "First-preference votes",
+                                "share_pct": "First preference (%)",
+                            }).sort_values("First preference (%)", ascending=False),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    final_pair = KEW_HISTORICAL_RESULTS[
+                        KEW_HISTORICAL_RESULTS["result_measure"] == "final_preference_distribution"
+                    ].copy()
+                    if not final_pair.empty:
+                        st.markdown("**2022 final two-candidate preference distribution**")
+                        st.dataframe(
+                            final_pair[
+                                ["candidate_name", "party", "votes", "share_pct"]
+                            ].rename(columns={
+                                "candidate_name": "2022 candidate",
+                                "party": "Party",
+                                "votes": "Votes after preferences",
+                                "share_pct": "Share (%)",
+                            }),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    st.caption(
+                        "Source: Victorian Electoral Commission. In 2022 the final distribution "
+                        "was Liberal candidate Jess Wilson versus Labor candidate Lucy Skelton. "
+                        "The earlier booth-level two-candidate count was not the final distribution."
+                    )
+                else:
+                    st.warning("The verified Kew 2022 result file is missing.")
+
                 if RESULTS_PATH.exists():
                     results = pd.read_csv(RESULTS_PATH)
                     subset = results[
