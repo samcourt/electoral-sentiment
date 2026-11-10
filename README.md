@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.6.4
+# Australian Electoral Sentiment Tracker — prototype 0.7.2
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -40,6 +40,28 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Forecast-first seat view (prototype 0.7.2)
+
+The Kew electorate page is ordered around the question users most want answered:
+
+1. **Election outlook:** leading candidate, leading challenger, most likely final-two pairing, conditional 2CP split, alternative pairings and candidate win-probability table.
+2. **Current seat evidence:** the 2026 candidate register, published seat polling, statewide polling trends, campaign donations, campaign activity, Kalshi market snapshots, Antony Green analysis and reviewed local evidence.
+3. **Historical context:** 2022 Kew and district results are moved to the bottom and collapsed by default.
+
+### Showing Sophie Torney as the leading challenger
+
+The Kew outlook uses the candidate-specific external forecast from AEF, rather than assuming the final two are Liberal and Labor. AEF's Kew page is dated 30 October 2026. It reports Jess Wilson at 93.7% win probability and Sophie Torney at 4.4%, with a 40.6% probability that Wilson and Torney are the final two. Across the listed AEF final-pair outcomes, Torney appears in 40.8% of simulations. The next most frequent named pairing is Wilson–Laird at 20.6%.
+
+For the Wilson–Torney pairing, AEF's median conditional final count is 60.7% Wilson to 39.3% Torney. Those figures apply only if that pair reaches the final two. The 40.6% is the probability of that pairing, not Torney's chance of winning. The chance of appearing in any final pair is also not quite the same as the chance of finishing second, although Wilson's modelled win probability makes that interpretation plausible for the Wilson–Torney scenario.
+
+The complete candidate win probabilities and available final-pair scenarios are stored in:
+- `data/kew_external_forecast_benchmarks.csv`
+- `data/kew_external_2cp_benchmarks.csv`
+
+The app also links to Australian Election Tracker's 8 November statewide seat model. That model places Kew in a Coalition-versus-One-Nation contest, but its published methodology explicitly says it groups independents into "Others" and does not model individual independents. It is therefore a party-level seat-model cross-check, not a direct assessment of whether Sophie Torney or David Laird is more likely to be second.
+
+**Freshness warning:** AEF's Kew candidate page is older than the latest statewide polls in the tracker. Its candidate-level probabilities are the best published candidate-level benchmark currently loaded, but they are not a live model update. The app makes this date visible beside the outlook. The project does not yet produce independent, calibrated Kew win probabilities.
 
 ## Kew polling trends, scenarios and forecast history (prototype 0.5)
 
