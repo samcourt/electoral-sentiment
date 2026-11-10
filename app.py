@@ -234,6 +234,171 @@ if jurisdiction == "Victoria":
         "8 Legislative Council regions"
     )
 
+    if level == "Legislative Assembly" and district == "Kew":
+        st.markdown("## Kew · election outlook")
+        st.caption(
+            "Forecast first, evidence and model inputs next, historical results last. "
+            "The lead forecast below is an external model benchmark, not our own calibrated model."
+        )
+        if KEW_EXTERNAL_FORECAST.empty or KEW_EXTERNAL_2CP.empty:
+            st.warning(
+                "A candidate-level Kew forecast benchmark is not loaded. "
+                "The dashboard will not infer a likely final pair from statewide polling alone."
+            )
+        else:
+            forecast_candidates = KEW_EXTERNAL_FORECAST.copy()
+            forecast_pairs = KEW_EXTERNAL_2CP.copy()
+            for column in [
+                "first_preference_median_pct", "first_preference_low_pct",
+                "first_preference_high_pct", "win_probability_pct"
+            ]:
+                forecast_candidates[column] = pd.to_numeric(
+                    forecast_candidates[column], errors="coerce"
+                )
+            for column in [
+                "candidate_a_pct", "candidate_b_pct", "scenario_probability_pct"
+            ]:
+                forecast_pairs[column] = pd.to_numeric(
+                    forecast_pairs[column], errors="coerce"
+                )
+
+            forecast_as_of = str(forecast_candidates.iloc[0]["as_of_date"])
+            leading_candidate = forecast_candidates.sort_values(
+                "win_probability_pct", ascending=False
+            ).iloc[0]
+            finalist_exposure = {}
+            for _, pair_row in forecast_pairs.iterrows():
+                probability = float(pair_row["scenario_probability_pct"] or 0)
+                for candidate_name in [
+                    str(pair_row["final_pair_candidate_a"]),
+                    str(pair_row["final_pair_candidate_b"]),
+                ]:
+                    if candidate_name != "Jess Wilson":
+                        finalist_exposure[candidate_name] = (
+                            finalist_exposure.get(candidate_name, 0.0) + probability
+                        )
+            likely_challenger, challenger_exposure = max(
+                finalist_exposure.items(), key=lambda item: item[1]
+            )
+            most_likely_pair = forecast_pairs.sort_values(
+                "scenario_probability_pct", ascending=False
+            ).iloc[0]
+
+            outlook_a, outlook_b, outlook_c = st.columns(3)
+            outlook_a.metric(
+                "Most likely winner",
+                str(leading_candidate["candidate_name"]),
+                f"{leading_candidate['win_probability_pct']:.1f}% AEF win probability",
+            )
+            outlook_b.metric(
+                "Leading challenger",
+                likely_challenger,
+                f"{challenger_exposure:.1f}% chance of appearing in final two",
+            )
+            outlook_c.metric(
+                "Most likely final pair",
+                f"{most_likely_pair['final_pair_candidate_a']} / "
+                f"{most_likely_pair['final_pair_candidate_b']}",
+                f"{most_likely_pair['scenario_probability_pct']:.1f}% of AEF simulations",
+            )
+
+            torney_pair = forecast_pairs[
+                (
+                    (forecast_pairs["final_pair_candidate_a"] == "Jess Wilson")
+                    & (forecast_pairs["final_pair_candidate_b"] == "Sophie Torney")
+                )
+                |
+                (
+                    (forecast_pairs["final_pair_candidate_a"] == "Sophie Torney")
+                    & (forecast_pairs["final_pair_candidate_b"] == "Jess Wilson")
+                )
+            ]
+            if not torney_pair.empty:
+                torney_scenario = torney_pair.iloc[0]
+                if torney_scenario["final_pair_candidate_a"] == "Jess Wilson":
+                    wilson_share = torney_scenario["candidate_a_pct"]
+                    torney_share = torney_scenario["candidate_b_pct"]
+                else:
+                    wilson_share = torney_scenario["candidate_b_pct"]
+                    torney_share = torney_scenario["candidate_a_pct"]
+                st.markdown("### Most likely Kew run-off scenario")
+                run_a, run_b, run_c = st.columns(3)
+                run_a.metric("Jess Wilson · Liberal", f"{wilson_share:.1f}%")
+                run_b.metric("Sophie Torney · Independent", f"{torney_share:.1f}%")
+                run_c.metric(
+                    "Chance this is the final pair",
+                    f"{torney_scenario['scenario_probability_pct']:.1f}%",
+                )
+                st.caption(
+                    "These vote shares are conditional on Wilson and Torney reaching the final "
+                    "two. The 40.6% figure is the probability of this particular pairing in AEF's "
+                    "simulations, not Torney's probability of winning."
+                )
+
+            with st.expander("Other possible final-two matchups and their probabilities", expanded=True):
+                pair_display = forecast_pairs.sort_values(
+                    "scenario_probability_pct", ascending=False
+                )[
+                    [
+                        "scenario", "candidate_a_pct", "candidate_b_pct",
+                        "scenario_probability_pct", "notes"
+                    ]
+                ].rename(columns={
+                    "scenario": "Possible final pair",
+                    "candidate_a_pct": "Candidate A 2CP (%)",
+                    "candidate_b_pct": "Candidate B 2CP (%)",
+                    "scenario_probability_pct": "Chance of this pair (%)",
+                    "notes": "Source note",
+                })
+                st.dataframe(
+                    pair_display,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                exposure_display = pd.DataFrame(
+                    [
+                        {
+                            "Candidate": name,
+                            "Appears in final two (%)": probability,
+                        }
+                        for name, probability in sorted(
+                            finalist_exposure.items(),
+                            key=lambda item: item[1],
+                            reverse=True,
+                        )
+                    ]
+                )
+                st.markdown("**Non-Wilson candidates by simulated final-two appearance**")
+                st.bar_chart(
+                    exposure_display.set_index("Candidate")
+                )
+
+            st.caption(
+                f"Lead candidate and final-pair benchmark: AEF, as at {forecast_as_of}. "
+                "Its Kew page has not been updated to reflect all statewide polling released "
+                "since then. Treat this as the best available candidate-level external benchmark, "
+                "not as a live probability."
+            )
+
+            st.markdown("**Why other seat maps may look different**")
+            st.write(
+                "Australian Election Tracker's 8 November statewide seat model lists Kew as "
+                "Coalition versus One Nation. Its published methodology says it groups "
+                "independents into 'Others' and does not model individual independent candidates. "
+                "That is a useful party-level seat-model cross-check, but it cannot properly "
+                "rank Sophie Torney against David Laird as individual Kew candidates."
+            )
+            st.markdown(
+                "[AEF's Kew candidate forecast ↗]"
+                "(https://www.aeforecasts.com/seat/2026vic/regular/kew/) · "
+                "[Australian Election Tracker seat model ↗]"
+                "(https://electiontracker.au/forecast) · "
+                "[How its model works ↗]"
+                "(https://electiontracker.au/forecast/methodology)"
+            )
+        st.divider()
+
     if level == "Legislative Assembly":
         selected_observations = OBSERVATIONS.copy()
         if district != "All districts":
@@ -247,12 +412,6 @@ if jurisdiction == "Victoria":
             if obs_count else 0
         )
         issue_count = selected_observations["issue"].nunique() if obs_count else 0
-
-        a, b, c, d = st.columns(4)
-        a.metric("Districts in register", "88")
-        b.metric("Last state election", "2022")
-        c.metric("Current campaign", "2026")
-        d.metric("Loaded observations", str(obs_count))
 
         if not HAS_DISTRICT_REGISTER:
             st.warning(
@@ -275,6 +434,12 @@ if jurisdiction == "Victoria":
                 if not row_matches.empty
                 else "https://vec.vic.gov.au/electoral-boundaries/state-districts"
             )
+            st.markdown("## Current seat data")
+            a, b, c, d = st.columns(4)
+            a.metric("Districts in register", "88")
+            b.metric("Last state election", "2022")
+            c.metric("Current campaign", "2026")
+            d.metric("Loaded observations", str(obs_count))
             st.markdown(f"### {district}")
             st.markdown(f"[2026 district information at the VEC]({vec_url})")
 
@@ -305,75 +470,6 @@ if jurisdiction == "Victoria":
                     )
                 else:
                     st.warning("The Kew candidate register is not present in data/.")
-
-                st.markdown("#### 2022 historical result — baseline only")
-                st.caption(
-                    "These are actual results from the previous state election, not estimates "
-                    "for 2026. Candidate names and the contest for the final preference "
-                    "distribution differ from the current election."
-                )
-                if not KEW_HISTORICAL_RESULTS.empty:
-                    historical_primary = KEW_HISTORICAL_RESULTS[
-                        KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
-                    ].copy()
-                    if not historical_primary.empty:
-                        historical_primary["share_pct"] = pd.to_numeric(
-                            historical_primary["share_pct"], errors="coerce"
-                        )
-                        st.dataframe(
-                            historical_primary[
-                                ["candidate_name", "party", "votes", "share_pct"]
-                            ].rename(columns={
-                                "candidate_name": "2022 candidate",
-                                "party": "Party",
-                                "votes": "First-preference votes",
-                                "share_pct": "First preference (%)",
-                            }).sort_values("First preference (%)", ascending=False),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                    final_pair = KEW_HISTORICAL_RESULTS[
-                        KEW_HISTORICAL_RESULTS["result_measure"] == "final_preference_distribution"
-                    ].copy()
-                    if not final_pair.empty:
-                        st.markdown("**2022 final two-candidate preference distribution**")
-                        st.dataframe(
-                            final_pair[
-                                ["candidate_name", "party", "votes", "share_pct"]
-                            ].rename(columns={
-                                "candidate_name": "2022 candidate",
-                                "party": "Party",
-                                "votes": "Votes after preferences",
-                                "share_pct": "Share (%)",
-                            }),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                    st.caption(
-                        "Source: Victorian Electoral Commission. In 2022 the final distribution "
-                        "was Liberal candidate Jess Wilson versus Labor candidate Lucy Skelton. "
-                        "The earlier booth-level two-candidate count was not the final distribution."
-                    )
-                else:
-                    st.warning("The verified Kew 2022 result file is missing.")
-
-            if RESULTS_PATH.exists():
-                results = pd.read_csv(RESULTS_PATH)
-                subset = results[
-                    results.astype(str).apply(
-                        lambda col: col.str.contains(district, case=False, na=False)
-                    ).any(axis=1)
-                ]
-                if not subset.empty:
-                    st.markdown("#### Historical election results")
-                    st.dataframe(subset, use_container_width=True, hide_index=True)
-                else:
-                    st.info(
-                        "The historical results file exists, but this district was not "
-                        "matched automatically. Verify the source field mapping."
-                    )
-            else:
-                st.info("District-level 2022 results have not yet been imported.")
 
             if district == "Kew":
                 st.markdown("#### Published Kew polling measurements")
@@ -2066,6 +2162,78 @@ if jurisdiction == "Victoria":
                                 st.success("Review saved to data/news_articles.csv.")
                                 st.rerun()
 
+            st.markdown("## Historical results and baselines")
+            with st.expander("2022 Kew result — previous election only", expanded=False):
+                    st.markdown("#### 2022 historical result — baseline only")
+                    st.caption(
+                        "These are actual results from the previous state election, not estimates "
+                        "for 2026. Candidate names and the contest for the final preference "
+                        "distribution differ from the current election."
+                    )
+                    if not KEW_HISTORICAL_RESULTS.empty:
+                        historical_primary = KEW_HISTORICAL_RESULTS[
+                            KEW_HISTORICAL_RESULTS["result_measure"] == "primary"
+                        ].copy()
+                        if not historical_primary.empty:
+                            historical_primary["share_pct"] = pd.to_numeric(
+                                historical_primary["share_pct"], errors="coerce"
+                            )
+                            st.dataframe(
+                                historical_primary[
+                                    ["candidate_name", "party", "votes", "share_pct"]
+                                ].rename(columns={
+                                    "candidate_name": "2022 candidate",
+                                    "party": "Party",
+                                    "votes": "First-preference votes",
+                                    "share_pct": "First preference (%)",
+                                }).sort_values("First preference (%)", ascending=False),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                        final_pair = KEW_HISTORICAL_RESULTS[
+                            KEW_HISTORICAL_RESULTS["result_measure"] == "final_preference_distribution"
+                        ].copy()
+                        if not final_pair.empty:
+                            st.markdown("**2022 final two-candidate preference distribution**")
+                            st.dataframe(
+                                final_pair[
+                                    ["candidate_name", "party", "votes", "share_pct"]
+                                ].rename(columns={
+                                    "candidate_name": "2022 candidate",
+                                    "party": "Party",
+                                    "votes": "Votes after preferences",
+                                    "share_pct": "Share (%)",
+                                }),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                        st.caption(
+                            "Source: Victorian Electoral Commission. In 2022 the final distribution "
+                            "was Liberal candidate Jess Wilson versus Labor candidate Lucy Skelton. "
+                            "The earlier booth-level two-candidate count was not the final distribution."
+                        )
+                    else:
+                        st.warning("The verified Kew 2022 result file is missing.")
+    
+                if RESULTS_PATH.exists():
+                    results = pd.read_csv(RESULTS_PATH)
+                    subset = results[
+                        results.astype(str).apply(
+                            lambda col: col.str.contains(district, case=False, na=False)
+                        ).any(axis=1)
+                    ]
+                    if not subset.empty:
+                        st.markdown("#### Historical election results")
+                        st.dataframe(subset, use_container_width=True, hide_index=True)
+                    else:
+                        st.info(
+                            "The historical results file exists, but this district was not "
+                            "matched automatically. Verify the source field mapping."
+                        )
+                else:
+                    st.info("District-level 2022 results have not yet been imported.")
+    
+
             st.markdown("#### Research status")
             st.write(
                 "- Historical vote baseline: awaiting verified district result import\n"
@@ -2125,5 +2293,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.6.4 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.7.0 · Built with Streamlit · No personal voter data is collected."
 )
