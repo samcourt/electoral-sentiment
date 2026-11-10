@@ -90,6 +90,31 @@ jobs:
           with forecast_path.open(encoding="utf-8-sig", newline="") as handle:
               external_forecasts = list(csv.DictReader(handle))
           assert any(row["candidate_name"] == "Jess Wilson" for row in external_forecasts)
+          assert any(row["candidate_name"] == "Sophie Torney" for row in external_forecasts)
+
+          pairs_path = Path("data/kew_external_2cp_benchmarks.csv")
+          with pairs_path.open(encoding="utf-8-sig", newline="") as handle:
+              pair_scenarios = list(csv.DictReader(handle))
+          assert len(pair_scenarios) >= 7, "Expected the full set of published Kew final-pair scenarios"
+          wilson_torney = [
+              row for row in pair_scenarios
+              if {row["final_pair_candidate_a"], row["final_pair_candidate_b"]}
+              == {"Jess Wilson", "Sophie Torney"}
+          ]
+          assert len(wilson_torney) == 1, "Missing Wilson–Torney final-pair benchmark"
+          assert abs(float(wilson_torney[0]["scenario_probability_pct"]) - 40.6) < 0.01
+          torney_exposure = sum(
+              float(row["scenario_probability_pct"])
+              for row in pair_scenarios
+              if "Sophie Torney" in {
+                  row["final_pair_candidate_a"], row["final_pair_candidate_b"]
+              }
+          )
+          assert abs(torney_exposure - 40.8) < 0.01, torney_exposure
+          print(
+              f"Validated {len(pair_scenarios)} AEF final-pair scenarios; "
+              f"Sophie Torney finalist exposure {torney_exposure:.1f}%."
+          )
 
           snapshot_path = Path("data/kew_forecast_snapshots.csv")
           with snapshot_path.open(encoding="utf-8-sig", newline="") as handle:
