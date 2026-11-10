@@ -332,7 +332,8 @@ if jurisdiction == "Victoria":
                 st.caption(
                     "These vote shares are conditional on Wilson and Torney reaching the final "
                     "two. The 40.6% figure is the probability of this particular pairing in AEF's "
-                    "simulations, not Torney's probability of winning."
+                    f"simulations, not Torney's probability of winning. Torney appears in "
+                    f"{challenger_exposure:.1f}% of AEF final-pair outcomes overall."
                 )
 
             with st.expander("Other possible final-two matchups and their probabilities", expanded=True):
@@ -1091,7 +1092,7 @@ if jurisdiction == "Victoria":
                         )
                         st.rerun()
 
-            st.markdown("#### Polling trends and Kew forecast workspace")
+            st.markdown("#### Current polling, model inputs and scenario testing")
             st.caption(
                 "This is an exploratory research model. It separates published poll results, "
                 "modelled scenarios and external forecasts. It is not yet calibrated against "
@@ -1434,7 +1435,7 @@ if jurisdiction == "Victoria":
                         "his possible vote and all other unmodelled/unreported vote."
                     )
 
-                    st.markdown("##### Conditional Wilson–Sun two-candidate-preferred (2CP) scenario")
+                    st.markdown("##### Alternative Wilson–Sun two-candidate-preferred (2CP) scenario")
                     swing_multiplier = st.slider(
                         "Kew uniform-swing multiplier",
                         min_value=0.5,
@@ -2294,5 +2295,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.7.0 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.7.1 · Built with Streamlit · No personal voter data is collected."
 )
