@@ -331,7 +331,7 @@ if jurisdiction == "Victoria":
                 )
                 st.caption(
                     "These vote shares are conditional on Wilson and Torney reaching the final "
-                    "two. The {torney_scenario['scenario_probability_pct']:.1f}% figure is the probability "
+                    f"two. The {torney_scenario['scenario_probability_pct']:.1f}% figure is the probability "
                     "of this particular pairing in AEF's simulations, not Torney's probability "
                     "of winning. Torney appears in "
                     f"{challenger_exposure:.1f}% of AEF final-pair outcomes overall."
