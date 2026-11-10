@@ -1454,6 +1454,24 @@ if jurisdiction == "Victoria":
                     )
 
                     st.markdown("##### Alternative Wilson–Sun two-candidate-preferred (2CP) scenario")
+                    wilson_labor_pair_rows = KEW_EXTERNAL_2CP[
+                        (
+                            (KEW_EXTERNAL_2CP["final_pair_candidate_a"] == "Jess Wilson")
+                            & (KEW_EXTERNAL_2CP["final_pair_candidate_b"] == "David Sun")
+                        )
+                        |
+                        (
+                            (KEW_EXTERNAL_2CP["final_pair_candidate_a"] == "David Sun")
+                            & (KEW_EXTERNAL_2CP["final_pair_candidate_b"] == "Jess Wilson")
+                        )
+                    ] if not KEW_EXTERNAL_2CP.empty else pd.DataFrame()
+                    wilson_labor_pair_probability = (
+                        float(pd.to_numeric(
+                            wilson_labor_pair_rows["scenario_probability_pct"],
+                            errors="coerce"
+                        ).iloc[0])
+                        if not wilson_labor_pair_rows.empty else None
+                    )
                     swing_multiplier = st.slider(
                         "Kew uniform-swing multiplier",
                         min_value=0.5,
@@ -1481,10 +1499,16 @@ if jurisdiction == "Victoria":
                             f"{tpp_scenario['coalition_share_pct'] - tpp_scenario['labor_share_pct']:.1f} pts"
                         )
                         st.caption(
-                            "Conditional 2CP scenario only: assumes Wilson and Sun are the final two, "
+                            "Alternative 2CP scenario only: assumes Wilson and Sun are the final two, "
                             "and applies a uniform statewide two-party swing to Kew's 2022 final "
-                            "preference distribution. The actual final two could include Sophie Torney "
-                            "or David Laird, in which case this is not the relevant count."
+                            "preference distribution. "
+                            + (
+                                f"AEF assigns this Wilson–Sun pair a "
+                                f"{wilson_labor_pair_probability:.1f}% simulation frequency. "
+                                if wilson_labor_pair_probability is not None
+                                else ""
+                            )
+                            + "The Wilson–Torney pairing is more frequent in the AEF Kew model."
                         )
                         st.caption(
                             f"Sensitivity at 0.5×–1.5× statewide movement: "
