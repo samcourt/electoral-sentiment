@@ -331,8 +331,9 @@ if jurisdiction == "Victoria":
                 )
                 st.caption(
                     "These vote shares are conditional on Wilson and Torney reaching the final "
-                    "two. The 40.6% figure is the probability of this particular pairing in AEF's "
-                    f"simulations, not Torney's probability of winning. Torney appears in "
+                    "two. The {torney_scenario['scenario_probability_pct']:.1f}% figure is the probability "
+                    "of this particular pairing in AEF's simulations, not Torney's probability "
+                    "of winning. Torney appears in "
                     f"{challenger_exposure:.1f}% of AEF final-pair outcomes overall."
                 )
 
@@ -356,6 +357,23 @@ if jurisdiction == "Victoria":
                     use_container_width=True,
                     hide_index=True,
                 )
+                st.markdown("**AEF candidate win probabilities**")
+                win_display = forecast_candidates.sort_values(
+                    "win_probability_pct", ascending=False
+                )[
+                    [
+                        "candidate_name", "win_probability_pct",
+                        "first_preference_median_pct", "first_preference_low_pct",
+                        "first_preference_high_pct"
+                    ]
+                ].rename(columns={
+                    "candidate_name": "Candidate",
+                    "win_probability_pct": "Chance of winning (%)",
+                    "first_preference_median_pct": "Primary vote median (%)",
+                    "first_preference_low_pct": "Primary vote low (%)",
+                    "first_preference_high_pct": "Primary vote high (%)",
+                })
+                st.dataframe(win_display, use_container_width=True, hide_index=True)
 
                 exposure_display = pd.DataFrame(
                     [
@@ -2295,5 +2313,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.7.1 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.7.2 · Built with Streamlit · No personal voter data is collected."
 )
