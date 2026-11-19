@@ -1325,6 +1325,44 @@ if jurisdiction == "Victoria":
                         ),
                         "Source": getattr(row, "source_url", ""),
                     })
+            # Add the latest statewide poll per pollster as broader context, never as a Kew poll.
+            if VIC_STATE_POLLS_PATH.exists():
+                state_timeline = pd.read_csv(VIC_STATE_POLLS_PATH, keep_default_na=False)
+                if not state_timeline.empty and {"pollster", "fieldwork_end"}.issubset(state_timeline.columns):
+                    state_timeline["fieldwork_sort"] = pd.to_datetime(
+                        state_timeline["fieldwork_end"], errors="coerce"
+                    )
+                    latest_state_polls = (
+                        state_timeline.dropna(subset=["fieldwork_sort"])
+                        .sort_values("fieldwork_sort")
+                        .groupby("pollster", as_index=False)
+                        .tail(1)
+                    )
+                    for row in latest_state_polls.itertuples():
+                        timeline_rows.append({
+                            "Date": row.fieldwork_end, "Evidence": "Statewide poll (context)",
+                            "Subject": row.pollster,
+                            "What was recorded": (
+                                f"Statewide primary vote — Labor {getattr(row, 'alp_pct', '')}%, "
+                                f"Coalition {getattr(row, 'coalition_pct', '')}%, "
+                                f"One Nation {getattr(row, 'one_nation_pct', '')}%, "
+                                f"Greens {getattr(row, 'greens_pct', '')}%. Not a Kew measurement."
+                            ),
+                            "Source": getattr(row, "source_url", ""),
+                        })
+            if not VIC_SEAT_PROJECTIONS.empty:
+                for row in VIC_SEAT_PROJECTIONS.itertuples():
+                    timeline_rows.append({
+                        "Date": row.as_of_date, "Evidence": "Statewide seat model update",
+                        "Subject": row.model_name,
+                        "What was recorded": (
+                            f"External model snapshot: Coalition {row.coalition_seats}, "
+                            f"Labor {row.labor_seats}, One Nation {row.one_nation_seats}, "
+                            f"Greens {row.greens_seats}, independent/other {row.independent_other_seats} "
+                            "seats. Broader Victorian context, not a Kew poll."
+                        ),
+                        "Source": row.source_url,
+                    })
             if not KEW_EXTERNAL_FORECAST.empty:
                 for row in KEW_EXTERNAL_FORECAST.drop_duplicates("benchmark_id").itertuples():
                     timeline_rows.append({
