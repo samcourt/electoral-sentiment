@@ -148,4 +148,45 @@ jobs:
           assert len(analyst_notes) >= 3, "Expected curated Antony Green source notes"
           assert any(row["published_date"] == "2026-11-09" for row in analyst_notes)
           print("Validated campaign-signal ledgers and expert-analysis references.")
+          reach_path = Path("data/kew_campaign_reach_benchmarks.csv")
+          with reach_path.open(encoding="utf-8-sig", newline="") as handle:
+              reach_rows = list(csv.DictReader(handle))
+          assert reach_rows, "Expected at least one sourced Kew campaign reach benchmark"
+          assert {"candidate_name", "doors_knocked_reported", "volunteers_reported", "source_url", "evidence_status"}.issubset(set(reach_rows[0]))
+          torney_reach = next(row for row in reach_rows if row["candidate_name"] == "Sophie Torney")
+          assert torney_reach["doors_knocked_reported"] == "17000+"
+          assert torney_reach["evidence_status"] == "Campaign-reported"
+
+          funding_path = Path("data/kew_funding_benchmarks.csv")
+          with funding_path.open(encoding="utf-8-sig", newline="") as handle:
+              funding_rows = list(csv.DictReader(handle))
+          assert len(funding_rows) >= 7
+          torney_funding = next(row for row in funding_rows if row["recipient_name"] == "Sophie Torney")
+          assert int(torney_funding["disclosed_gross_aud"]) == 383219
+          assert int(torney_funding["reported_refunds_aud"]) == 140000
+          assert "donor_name" not in funding_rows[0], "Do not store individual donor names"
+
+          htv_path = Path("data/kew_how_to_vote_preferences.csv")
+          with htv_path.open(encoding="utf-8-sig", newline="") as handle:
+              htv_rows = list(csv.DictReader(handle))
+          assert len(htv_rows) >= 21
+          labor_torney = [row for row in htv_rows if row["card_id"] == "LABOR-KEW-2026" and row["candidate_name"] == "Sophie Torney"]
+          assert len(labor_torney) == 1 and labor_torney[0]["preference_rank"] == "2"
+          on_torney = [row for row in htv_rows if row["card_id"] == "ON-KEW-2026" and row["candidate_name"] == "Sophie Torney"]
+          assert len(on_torney) == 1 and on_torney[0]["preference_rank"] == "7"
+
+          projection_path = Path("data/vic_seat_projection_benchmarks.csv")
+          with projection_path.open(encoding="utf-8-sig", newline="") as handle:
+              projections = list(csv.DictReader(handle))
+          assert len(projections) == 4, f"Expected 4 external seat model snapshots, found {len(projections)}"
+          for row in projections:
+              count_total = sum(float(row[key]) for key in [
+                  "coalition_seats", "labor_seats", "one_nation_seats",
+                  "greens_seats", "independent_other_seats"
+              ])
+              assert abs(count_total - 88) < 0.2, (row["model_name"], count_total)
+              assert int(row["majority_threshold"]) == 45
+          aet = next(row for row in projections if row["model_name"] == "Australian Election Tracker")
+          assert int(aet["in_doubt_seats"]) == 32
+          print("Validated Kew campaign reach, funding, preference-card and four-model statewide projection datasets.")
           PY
