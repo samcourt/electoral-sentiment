@@ -1280,6 +1280,46 @@ if jurisdiction == "Victoria":
 
             st.markdown("#### Kew evidence timeline")
             timeline_rows = []
+            # Include ongoing manually reviewed campaign activity and donation records.
+            activity_timeline = load_csv_or_empty(
+                VIC_CAMPAIGN_ACTIVITY_PATH, ACTIVITY_FIELDS
+            )
+            if not activity_timeline.empty:
+                for row in activity_timeline[
+                    activity_timeline["electorate"].eq("Kew")
+                ].itertuples():
+                    timeline_rows.append({
+                        "Date": row.activity_date, "Evidence": "Campaign activity log",
+                        "Subject": row.candidate_name,
+                        "What was recorded": (
+                            f"{row.activity_type} · {row.activity_status} · "
+                            f"Volunteers: {row.volunteers_reported or 'not reported'} · "
+                            f"Doors contacted: {row.doors_contacted_reported or 'not reported'} · "
+                            f"{row.evidence_note}"
+                        ),
+                        "Source": row.source_url,
+                    })
+            donation_timeline = load_csv_or_empty(
+                VIC_CAMPAIGN_DONATIONS_PATH, DONATION_FIELDS
+            )
+            if not donation_timeline.empty:
+                donation_timeline = donation_timeline[
+                    donation_timeline["electorate"].isin(["Kew", "Statewide"])
+                ]
+                for row in donation_timeline.itertuples():
+                    amount = pd.to_numeric(pd.Series([row.amount_aud]), errors="coerce").iloc[0]
+                    scope_note = "Statewide recipient; not attributable to Kew." if row.electorate == "Statewide" else "Kew recipient record."
+                    timeline_rows.append({
+                        "Date": row.disclosure_date or row.donation_date,
+                        "Evidence": "Donation disclosure log",
+                        "Subject": row.recipient_name,
+                        "What was recorded": (
+                            f"{row.recipient_type} · {scope_note} "
+                            f"Amount: AUD {amount:,.0f}" if pd.notna(amount)
+                            else f"{row.recipient_type} · {scope_note} Amount not recorded."
+                        ),
+                        "Source": row.source_url,
+                    })
             if not KEW_CAMPAIGN_REACH.empty:
                 for row in KEW_CAMPAIGN_REACH[KEW_CAMPAIGN_REACH["electorate"].eq("Kew")].itertuples():
                     timeline_rows.append({
