@@ -1189,7 +1189,7 @@ if jurisdiction == "Victoria":
                         ["recipient_name", "disclosed_gross_aud", "reported_refunds_aud",
                          "net_after_reported_refunds_aud", "record_count", "donor_count",
                          "organisation_amount_aud", "people_amount_aud", "own_funds_amount_aud",
-                         "source_note", "source_url"]
+                         "source_note", "source_url", "refund_source_url"]
                     ].rename(columns={
                         "recipient_name": "Candidate",
                         "disclosed_gross_aud": "Gross disclosed ($)",
@@ -1201,13 +1201,17 @@ if jurisdiction == "Victoria":
                         "people_amount_aud": "Individuals ($)",
                         "own_funds_amount_aud": "Own funds ($)",
                         "source_note": "Interpretation note",
-                        "source_url": "Source",
+                        "source_url": "Disclosure source",
+                        "refund_source_url": "Refund source",
                     })
                     st.dataframe(
                         candidate_view,
                         use_container_width=True,
                         hide_index=True,
-                        column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open data ↗")},
+                        column_config={
+                            "Disclosure source": st.column_config.LinkColumn("Disclosure source", display_text="Open data ↗"),
+                            "Refund source": st.column_config.LinkColumn("Refund source", display_text="Open refund report ↗"),
+                        },
                     )
                 st.markdown("**Statewide party disclosures — not seat-level campaign budgets**")
                 if not party_funding.empty:
@@ -1267,9 +1271,10 @@ if jurisdiction == "Victoria":
                     column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open VEC card ↗")},
                 )
                 st.caption(
-                    "These are recommendations printed on registered cards, not observed voter choices or measured "
-                    "preference flows. The VEC describes how-to-vote cards as suggestions; voters remain free to number "
-                    "the ballot in their own order. Registration count is a separate measure from the three transcribed cards."
+                    "The VEC Kew page listed 46 registered how-to-vote card entries as at 17 November 2026; this table "
+                    "transcribes three selected cards, not all registrations. These are recommendations printed on "
+                    "registered cards, not observed voter choices or measured preference flows. The VEC describes cards "
+                    "as suggestions; voters remain free to number the ballot in their own order."
                 )
                 st.markdown("[Kew registered how-to-vote cards at the VEC ↗](https://www.vec.vic.gov.au/electoral-boundaries/state-districts/kew-district)")
 
