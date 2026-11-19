@@ -1232,6 +1232,30 @@ if jurisdiction == "Victoria":
                         hide_index=True,
                         column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open data ↗")},
                     )
+                campaign_claims = funding[
+                    funding["recipient_type"].eq("Campaign-reported aggregate")
+                ].copy()
+                if not campaign_claims.empty:
+                    st.markdown("**Campaign-reported aggregate fundraising — separate from VEC disclosures**")
+                    claim_view = campaign_claims[
+                        ["as_of_date", "recipient_name", "source_note", "source_url"]
+                    ].rename(columns={
+                        "as_of_date": "Reported date",
+                        "recipient_name": "Campaign",
+                        "source_note": "What the campaign reported",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        claim_view,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open report ↗")},
+                    )
+                    st.caption(
+                        "The reported $300,000+ from 1,500+ individuals is a campaign claim. "
+                        "It is not directly comparable with the VEC threshold-based disclosure total, "
+                        "and the two figures have not been reconciled."
+                    )
                 st.caption(
                     "The disclosure system is partial: smaller donations below the applicable threshold and records "
                     "not yet published will be absent. Candidate-level entries are not necessarily the full resources "
@@ -1333,14 +1357,24 @@ if jurisdiction == "Victoria":
                     })
             if not KEW_FUNDING_BENCHMARK.empty:
                 for row in KEW_FUNDING_BENCHMARK[KEW_FUNDING_BENCHMARK["electorate"].eq("Kew")].itertuples():
+                    if row.recipient_type == "Campaign-reported aggregate":
+                        funding_summary = row.source_note
+                        funding_evidence_type = "Campaign fundraising claim"
+                    else:
+                        gross = pd.to_numeric(pd.Series([row.disclosed_gross_aud]), errors="coerce").iloc[0]
+                        refunds = pd.to_numeric(pd.Series([row.reported_refunds_aud]), errors="coerce").iloc[0]
+                        net = pd.to_numeric(pd.Series([row.net_after_reported_refunds_aud]), errors="coerce").iloc[0]
+                        funding_summary = (
+                            f"Gross AUD {gross:,.0f}; identified refunds AUD {refunds:,.0f}; "
+                            f"gross less known refunds AUD {net:,.0f}. {row.source_note}"
+                            if pd.notna(gross) and pd.notna(refunds) and pd.notna(net)
+                            else f"No candidate-level amount is currently listed. {row.source_note}"
+                        )
+                        funding_evidence_type = "Candidate funding snapshot"
                     timeline_rows.append({
-                        "Date": row.as_of_date, "Evidence": "Candidate funding snapshot",
+                        "Date": row.as_of_date, "Evidence": funding_evidence_type,
                         "Subject": row.recipient_name,
-                        "What was recorded": (
-                            f"Gross $ {float(row.disclosed_gross_aud):,.0f}; identified refunds "
-                            f"$ {float(row.reported_refunds_aud):,.0f}; gross less known refunds "
-                            f"$ {float(row.net_after_reported_refunds_aud):,.0f}. {row.source_note}"
-                        ),
+                        "What was recorded": funding_summary,
                         "Source": row.source_url,
                     })
             if not KEW_HTV_PREFERENCES.empty:
