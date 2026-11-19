@@ -164,6 +164,8 @@ jobs:
           torney_funding = next(row for row in funding_rows if row["recipient_name"] == "Sophie Torney")
           assert int(torney_funding["disclosed_gross_aud"]) == 383219
           assert int(torney_funding["reported_refunds_aud"]) == 140000
+          campaign_claim = next(row for row in funding_rows if row["recipient_type"] == "Campaign-reported aggregate")
+          assert "300,000" in campaign_claim["source_note"] and "1,500" in campaign_claim["source_note"]
           assert "donor_name" not in funding_rows[0], "Do not store individual donor names"
 
           htv_path = Path("data/kew_how_to_vote_preferences.csv")
