@@ -151,6 +151,7 @@ The app distinguishes doors knocked from doors answered and conversations. Those
 ### Candidate and party funding
 
 `data/kew_funding_benchmarks.csv` contains a source-reviewed snapshot of public VEC disclosure data, checked 18 November 2026. Candidate receipts are listed separately from statewide party receipts. The file shows gross disclosed amounts, identifiable refunds and a simple gross-less-known-refunds figure. For Sophie Torney, the public gross total includes a $140,000 Climate 200 donation reported as returned; the displayed net figure subtracts that identified refund but should be reconciled against the underlying live disclosure account before being treated as final campaign funds.
+The local Eastern Melburnian report also quotes the campaign as saying it had raised more than $300,000 from more than 1,500 individuals. That broader campaign-reported figure is stored separately from VEC threshold disclosures because its scope, timing and overlap with disclosed receipts have not been reconciled; do not add the two figures together.
 
 Statewide party disclosures are not apportioned to individual electorates or candidates. Missing candidate-level disclosure entries do not establish that a campaign has no resources. The register is partial: donations below the disclosure threshold and not-yet-published records are not captured. Donor names are deliberately not copied into the tracker.
 
