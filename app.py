@@ -46,6 +46,10 @@ VIC_CAMPAIGN_DONATIONS_PATH = DATA_DIR / "vic_campaign_donations.csv"
 VIC_CAMPAIGN_ACTIVITY_PATH = DATA_DIR / "vic_campaign_activity.csv"
 KALSHI_SNAPSHOTS_PATH = DATA_DIR / "kalshi_market_snapshots.csv"
 ANTONY_GREEN_NOTES_PATH = DATA_DIR / "antony_green_notes.csv"
+KEW_CAMPAIGN_REACH_PATH = DATA_DIR / "kew_campaign_reach_benchmarks.csv"
+KEW_FUNDING_BENCHMARK_PATH = DATA_DIR / "kew_funding_benchmarks.csv"
+KEW_HTV_PATH = DATA_DIR / "kew_how_to_vote_preferences.csv"
+VIC_SEAT_PROJECTIONS_PATH = DATA_DIR / "vic_seat_projection_benchmarks.csv"
 
 st.set_page_config(
     page_title="Electoral Sentiment Tracker",
@@ -180,6 +184,15 @@ def load_vic_poll_average_benchmark():
     return pd.read_csv(VIC_POLL_AVERAGE_BENCHMARK_PATH, keep_default_na=False)
 
 
+@st.cache_data
+def load_static_evidence_csv(path_string: str):
+    """Load a read-only, source-reviewed benchmark CSV if present."""
+    path = Path(path_string)
+    if not path.exists() or not path.stat().st_size:
+        return pd.DataFrame()
+    return pd.read_csv(path, keep_default_na=False)
+
+
 DISTRICTS, HAS_DISTRICT_REGISTER = load_districts()
 OBSERVATIONS = load_observations()
 NEWS_ARTICLES = load_news_articles()
@@ -189,6 +202,10 @@ KEW_POLLS = load_kew_polls()
 KEW_EXTERNAL_FORECAST = load_kew_external_forecast()
 KEW_EXTERNAL_2CP = load_kew_external_2cp()
 VIC_POLL_AVERAGE_BENCHMARK = load_vic_poll_average_benchmark()
+KEW_CAMPAIGN_REACH = load_static_evidence_csv(str(KEW_CAMPAIGN_REACH_PATH))
+KEW_FUNDING_BENCHMARK = load_static_evidence_csv(str(KEW_FUNDING_BENCHMARK_PATH))
+KEW_HTV_PREFERENCES = load_static_evidence_csv(str(KEW_HTV_PATH))
+VIC_SEAT_PROJECTIONS = load_static_evidence_csv(str(VIC_SEAT_PROJECTIONS_PATH))
 
 st.title("Australian Electoral Sentiment Tracker")
 st.caption("Research prototype · Victoria 2026 live case · Federal and NSW expansion planned")
@@ -1109,6 +1126,298 @@ if jurisdiction == "Victoria":
                             "data/antony_green_notes.csv to preserve it in GitHub."
                         )
                         st.rerun()
+
+            st.markdown("#### Kew campaign reach benchmark")
+            if KEW_CAMPAIGN_REACH.empty:
+                st.info("No published campaign-reach benchmark has been loaded.")
+            else:
+                reach_data = KEW_CAMPAIGN_REACH[
+                    KEW_CAMPAIGN_REACH["electorate"].eq("Kew")
+                ].copy()
+                if not reach_data.empty:
+                    reach_row = reach_data.sort_values("activity_date").iloc[-1]
+                    reach_cols = st.columns(4)
+                    reach_cols[0].metric("Doors knocked (reported)", str(reach_row["doors_knocked_reported"]))
+                    reach_cols[1].metric("Volunteers (reported)", str(reach_row["volunteers_reported"]))
+                    reach_cols[2].metric("Volunteer hours (reported)", str(reach_row["volunteer_hours_reported"]))
+                    reach_cols[3].metric("Signs (reported)", str(reach_row["signs_reported"]))
+                    st.caption(
+                        "These are campaign-reported figures quoted by a local news outlet, not independently audited. "
+                        "The report only carried figures from one campaign team at publication. Doors knocked are not "
+                        "the same as doors answered or voter conversations; unreported values remain blank, not zero."
+                    )
+                    reach_display = reach_data[
+                        ["activity_date", "candidate_name", "measure", "source_type",
+                         "evidence_status", "geographic_scope", "source_note", "source_url"]
+                    ].rename(columns={
+                        "activity_date": "Reported date",
+                        "candidate_name": "Candidate",
+                        "measure": "Measure",
+                        "source_type": "Source type",
+                        "evidence_status": "Evidence status",
+                        "geographic_scope": "Geographic scope",
+                        "source_note": "Limitations / context",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        reach_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open report ↗")},
+                    )
+
+            st.markdown("#### Candidate and party funding disclosures")
+            if KEW_FUNDING_BENCHMARK.empty:
+                st.info("No funding benchmark snapshot has been loaded.")
+            else:
+                funding = KEW_FUNDING_BENCHMARK.copy()
+                for col in ["disclosed_gross_aud", "reported_refunds_aud", "net_after_reported_refunds_aud",
+                            "record_count", "donor_count", "organisation_amount_aud",
+                            "people_amount_aud", "own_funds_amount_aud"]:
+                    funding[col] = pd.to_numeric(funding[col], errors="coerce")
+                candidate_funding = funding[funding["recipient_type"].eq("Candidate")].copy()
+                party_funding = funding[funding["recipient_type"].eq("Registered party")].copy()
+                st.caption(
+                    "Snapshot of public VEC disclosure data, checked 18 November 2026. Direct candidate receipts "
+                    "and statewide party receipts are shown separately. Party funding is not assigned to an individual "
+                    "district. The identified Torney refund is subtracted for an indicative net figure; reconcile against "
+                    "the live VEC account before treating that as final campaign resources. Donor names are not stored."
+                )
+                st.markdown("**Direct candidate disclosures — Kew**")
+                if not candidate_funding.empty:
+                    candidate_view = candidate_funding[
+                        ["recipient_name", "disclosed_gross_aud", "reported_refunds_aud",
+                         "net_after_reported_refunds_aud", "record_count", "donor_count",
+                         "organisation_amount_aud", "people_amount_aud", "own_funds_amount_aud",
+                         "source_note", "source_url"]
+                    ].rename(columns={
+                        "recipient_name": "Candidate",
+                        "disclosed_gross_aud": "Gross disclosed ($)",
+                        "reported_refunds_aud": "Identified refunds ($)",
+                        "net_after_reported_refunds_aud": "Gross less known refunds ($)",
+                        "record_count": "Disclosure records",
+                        "donor_count": "Disclosed donors",
+                        "organisation_amount_aud": "Organisations ($)",
+                        "people_amount_aud": "Individuals ($)",
+                        "own_funds_amount_aud": "Own funds ($)",
+                        "source_note": "Interpretation note",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        candidate_view,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open data ↗")},
+                    )
+                st.markdown("**Statewide party disclosures — not seat-level campaign budgets**")
+                if not party_funding.empty:
+                    party_view = party_funding[
+                        ["recipient_name", "disclosed_gross_aud", "record_count", "donor_count",
+                         "source_note", "source_url"]
+                    ].rename(columns={
+                        "recipient_name": "Registered party",
+                        "disclosed_gross_aud": "Gross disclosed statewide ($)",
+                        "record_count": "Disclosure records",
+                        "donor_count": "Disclosed donors",
+                        "source_note": "Interpretation note",
+                        "source_url": "Source",
+                    })
+                    st.dataframe(
+                        party_view,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open data ↗")},
+                    )
+                st.caption(
+                    "The disclosure system is partial: smaller donations below the applicable threshold and records "
+                    "not yet published will be absent. Candidate-level entries are not necessarily the full resources "
+                    "available through party infrastructure, volunteers or in-kind support."
+                )
+
+            st.markdown("#### Kew how-to-vote preference cards")
+            if KEW_HTV_PREFERENCES.empty:
+                st.info("No Kew how-to-vote card transcriptions have been loaded.")
+            else:
+                htv = KEW_HTV_PREFERENCES.copy()
+                htv["preference_rank"] = pd.to_numeric(htv["preference_rank"], errors="coerce")
+                htv = htv.sort_values(["card_label", "preference_rank"])
+                htv_summaries = []
+                for card_id, card in htv.groupby("card_id", sort=False):
+                    first = card.iloc[0]
+                    ranked = card.dropna(subset=["preference_rank"])
+                    order = " → ".join(
+                        f"{int(row.preference_rank)} {row.candidate_name}"
+                        for row in ranked.itertuples()
+                    )
+                    if card_id == "TORNEY-KEW-2026":
+                        order = "1 Sophie Torney; voters choose the order of all remaining candidates"
+                    htv_summaries.append({
+                        "Card": first["card_label"],
+                        "Registered by": first["registered_by"],
+                        "Preference instructions": order,
+                        "Verified": first["verified_date"],
+                        "Source": first["source_url"],
+                        "Notes": first["notes"],
+                    })
+                htv_display = pd.DataFrame(htv_summaries)
+                st.dataframe(
+                    htv_display,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open VEC card ↗")},
+                )
+                st.caption(
+                    "These are recommendations printed on registered cards, not observed voter choices or measured "
+                    "preference flows. The VEC describes how-to-vote cards as suggestions; voters remain free to number "
+                    "the ballot in their own order. Registration count is a separate measure from the three transcribed cards."
+                )
+                st.markdown("[Kew registered how-to-vote cards at the VEC ↗](https://www.vec.vic.gov.au/electoral-boundaries/state-districts/kew-district)")
+
+            st.markdown("#### Kew evidence timeline")
+            timeline_rows = []
+            if not KEW_CAMPAIGN_REACH.empty:
+                for row in KEW_CAMPAIGN_REACH[KEW_CAMPAIGN_REACH["electorate"].eq("Kew")].itertuples():
+                    timeline_rows.append({
+                        "Date": row.activity_date, "Evidence": "Campaign reach",
+                        "Subject": row.candidate_name,
+                        "What was recorded": (
+                            f"Doors knocked: {row.doors_knocked_reported}; volunteers: {row.volunteers_reported}; "
+                            f"hours: {row.volunteer_hours_reported}; signs: {row.signs_reported}. {row.evidence_status}"
+                        ),
+                        "Source": row.source_url,
+                    })
+            if not KEW_FUNDING_BENCHMARK.empty:
+                for row in KEW_FUNDING_BENCHMARK[KEW_FUNDING_BENCHMARK["electorate"].eq("Kew")].itertuples():
+                    timeline_rows.append({
+                        "Date": row.as_of_date, "Evidence": "Candidate funding snapshot",
+                        "Subject": row.recipient_name,
+                        "What was recorded": (
+                            f"Gross $ {float(row.disclosed_gross_aud):,.0f}; identified refunds "
+                            f"$ {float(row.reported_refunds_aud):,.0f}; gross less known refunds "
+                            f"$ {float(row.net_after_reported_refunds_aud):,.0f}. {row.source_note}"
+                        ),
+                        "Source": row.source_url,
+                    })
+            if not KEW_HTV_PREFERENCES.empty:
+                for card_id, card in KEW_HTV_PREFERENCES.groupby("card_id", sort=False):
+                    first = card.iloc[0]
+                    ranks = card.sort_values("preference_rank")
+                    ranked_order = " → ".join(
+                        f"{int(row.preference_rank)} {row.candidate_name}"
+                        for row in ranks.itertuples()
+                    )
+                    timeline_rows.append({
+                        "Date": first["verified_date"], "Evidence": "How-to-vote card",
+                        "Subject": first["card_label"],
+                        "What was recorded": ranked_order or str(first["notes"]),
+                        "Source": first["source_url"],
+                    })
+            if not KEW_POLLS.empty:
+                for row in KEW_POLLS.itertuples():
+                    timeline_rows.append({
+                        "Date": getattr(row, "publication_date", ""),
+                        "Evidence": "Kew poll publication",
+                        "Subject": getattr(row, "pollster", "Kew poll"),
+                        "What was recorded": (
+                            f"Fieldwork {getattr(row, 'fieldwork_period', 'not stated')}; "
+                            f"sample {getattr(row, 'sample_size', 'not stated')}. "
+                            f"{getattr(row, 'limitations', '')}"
+                        ),
+                        "Source": getattr(row, "source_url", ""),
+                    })
+            if not KEW_EXTERNAL_FORECAST.empty:
+                for row in KEW_EXTERNAL_FORECAST.drop_duplicates("benchmark_id").itertuples():
+                    timeline_rows.append({
+                        "Date": row.as_of_date, "Evidence": "External Kew model",
+                        "Subject": row.model_name,
+                        "What was recorded": "Dated candidate-level forecast benchmark; not a Kew voter poll.",
+                        "Source": row.source_url,
+                    })
+            timeline = pd.DataFrame(timeline_rows)
+            if not timeline.empty:
+                timeline["Date sort"] = pd.to_datetime(timeline["Date"], errors="coerce")
+                timeline = timeline.sort_values("Date sort", ascending=False, na_position="last")
+                timeline = timeline.drop(columns=["Date sort"])
+                st.dataframe(
+                    timeline,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open source ↗")},
+                )
+                st.caption(
+                    "The timeline orders published measurements, disclosures, card instructions and model snapshots. "
+                    "They measure different things and are not combined into a vote score. The date shown is the "
+                    "publication, disclosure snapshot or verification date, as applicable."
+                )
+            else:
+                st.info("No dated Kew evidence has been loaded.")
+
+            st.markdown("#### Victoria-wide seat projection comparison")
+            if VIC_SEAT_PROJECTIONS.empty:
+                st.info("No external statewide seat projection snapshots have been loaded.")
+            else:
+                seat_models = VIC_SEAT_PROJECTIONS.copy()
+                seat_columns = [
+                    "coalition_seats", "labor_seats", "one_nation_seats",
+                    "greens_seats", "independent_other_seats", "in_doubt_seats",
+                ]
+                for col in seat_columns:
+                    seat_models[col] = pd.to_numeric(seat_models[col], errors="coerce")
+                seat_models["as_of_date"] = pd.to_datetime(
+                    seat_models["as_of_date"], errors="coerce"
+                )
+                display_seats = seat_models[
+                    ["model_name", "as_of_date", "poll_data_as_of", "seat_count_type",
+                     "coalition_seats", "labor_seats", "one_nation_seats", "greens_seats",
+                     "independent_other_seats", "in_doubt_seats", "majority_threshold",
+                     "coalition_range", "labor_range", "one_nation_range", "greens_range",
+                     "independent_other_range", "source_url"]
+                ].rename(columns={
+                    "model_name": "External model",
+                    "as_of_date": "Model date",
+                    "poll_data_as_of": "Polling data through",
+                    "seat_count_type": "What the number represents",
+                    "coalition_seats": "Coalition",
+                    "labor_seats": "Labor",
+                    "one_nation_seats": "One Nation",
+                    "greens_seats": "Greens",
+                    "independent_other_seats": "Independent / other",
+                    "in_doubt_seats": "In doubt",
+                    "majority_threshold": "Majority (88 seats)",
+                    "coalition_range": "Coalition range",
+                    "labor_range": "Labor range",
+                    "one_nation_range": "One Nation range",
+                    "greens_range": "Greens range",
+                    "independent_other_range": "Independent range",
+                    "source_url": "Source",
+                })
+                st.dataframe(
+                    display_seats,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={"Source": st.column_config.LinkColumn("Source", display_text="Open model ↗")},
+                )
+                chart_counts = seat_models.set_index("model_name")[
+                    ["coalition_seats", "labor_seats", "one_nation_seats", "greens_seats",
+                     "independent_other_seats"]
+                ].rename(columns={
+                    "coalition_seats": "Coalition", "labor_seats": "Labor",
+                    "one_nation_seats": "One Nation", "greens_seats": "Greens",
+                    "independent_other_seats": "Independent / other",
+                })
+                st.markdown("**Seat counts reported by each model**")
+                st.bar_chart(chart_counts)
+                with st.expander("Model methods and limitations"):
+                    for row in seat_models.itertuples():
+                        st.markdown(f"**{row.model_name}**")
+                        st.write(row.method_summary)
+                        st.caption(row.limitations)
+                st.caption(
+                    "These are external estimates with different dates, methods and outputs. "
+                    "Election Tracker reports central scenario seats led by each party, including 32 seats in doubt; "
+                    "the other sources report simulation means or central simulation counts. They are not directly "
+                    "comparable and are not averaged by this tracker. Majority threshold: 45 of 88 seats."
+                )
 
             st.markdown("#### Current polling, model inputs and scenario testing")
             st.caption(
@@ -2337,5 +2646,5 @@ st.write(
     "coverage and validation performance."
 )
 st.caption(
-    "Prototype version 0.7.2 · Built with Streamlit · No personal voter data is collected."
+    "Prototype version 0.7.3 · Built with Streamlit · No personal voter data is collected."
 )
