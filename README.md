@@ -1,4 +1,4 @@
-# Australian Electoral Sentiment Tracker — prototype 0.7.2
+# Australian Electoral Sentiment Tracker — prototype 0.7.3
 
 A neutral public-data research prototype. Initial live case: Victoria's 2026 state election. The architecture is designed to expand to federal and NSW elections.
 
@@ -19,6 +19,11 @@ A neutral public-data research prototype. Initial live case: Victoria's 2026 sta
 - Separately-labelled external Kew forecast and final-two benchmarks in `data/kew_external_forecast_benchmarks.csv` and `data/kew_external_2cp_benchmarks.csv`.
 - Dated model snapshots in `data/kew_forecast_snapshots.csv`.
 - Separate ledgers for VEC donation disclosures, campaign activity observations, Kalshi market snapshots and Antony Green analysis notes.
+- Source-reviewed Kew campaign-reach benchmark: 17,000+ doors knocked, 200+ volunteers, 2,000+ volunteer hours and 350 signs, attributed to the campaign and reported by local media; not independently audited.
+- Candidate-level and statewide party-level VEC donation snapshots, with gross disclosures, separately identified refunds and an indicative net-after-known-refunds figure; statewide party receipts are not attributed to Kew.
+- Transcribed preference sequences from three VEC-registered Kew how-to-vote cards (Labor, One Nation and Sophie Torney), kept separate from observed preference flows.
+- Dated Kew evidence timeline combining the local poll publication, campaign-reach report, funding snapshot, preference-card verification and AEF model benchmark.
+- Four-source statewide Legislative Assembly seat projection comparison, with each source's update date, seat-count interpretation, ranges, methodology and known limitations.
 - Candidate-specific Google News discovery queries and an editorial review form that links news items to candidates and source-attributed public views.
 - Candidate coverage time series based only on reviewed, Kew-specific news items; coverage volume is not a popularity or voting-intention measure.
 - News source register in `data/news_sources.csv`, including coverage and limitations.
@@ -132,6 +137,38 @@ Treat historical margins, preference-flow analysis, candidate-field commentary a
 ### How these signals should be used
 
 The dashboard deliberately does not combine poll shares, donations, campaign activity, market prices and expert commentary into a single unvalidated "sentiment score". They measure different things and have different coverage biases. The next modelling step should test their historical relationship to election outcomes across multiple electorates and elections, then calibrate weights using out-of-sample results. Until that backtesting exists, use them as an evidence dashboard alongside the explicitly-labelled polling scenarios.
+
+## Expanded Kew evidence and statewide seat projections (prototype 0.7.3)
+
+The Kew profile now adds several source-linked evidence layers alongside the existing polling and candidate scenario views.
+
+### Campaign reach
+
+`data/kew_campaign_reach_benchmarks.csv` records the Eastern Melburnian's 13 November report of figures supplied by Sophie Torney's campaign: more than 17,000 doors knocked, more than 200 volunteers, more than 2,000 volunteer hours and 350 signs. These are campaign-reported figures quoted by a local outlet, not independently audited. The article noted that it had sought comparable information from the main campaigns but only Torney's team had supplied figures at publication. Missing figures for other candidates are not zeros and must not be interpreted as no activity.
+
+The app distinguishes doors knocked from doors answered and conversations. Those measures should only be populated where a source explicitly reports them. They are measures of campaign effort and reach claims, not voter support.
+
+### Candidate and party funding
+
+`data/kew_funding_benchmarks.csv` contains a source-reviewed snapshot of public VEC disclosure data, checked 18 November 2026. Candidate receipts are listed separately from statewide party receipts. The file shows gross disclosed amounts, identifiable refunds and a simple gross-less-known-refunds figure. For Sophie Torney, the public gross total includes a $140,000 Climate 200 donation reported as returned; the displayed net figure subtracts that identified refund but should be reconciled against the underlying live disclosure account before being treated as final campaign funds.
+
+Statewide party disclosures are not apportioned to individual electorates or candidates. Missing candidate-level disclosure entries do not establish that a campaign has no resources. The register is partial: donations below the disclosure threshold and not-yet-published records are not captured. Donor names are deliberately not copied into the tracker.
+
+### How-to-vote preferences
+
+`data/kew_how_to_vote_preferences.csv` stores the preference instructions transcribed from three registered VEC Kew cards. Labor's card ranks David Sun first and Sophie Torney second. One Nation's card ranks David Laird first and Jess Wilson third, with Torney seventh. Torney's own card asks voters to put her first and choose their own order for the remaining candidates.
+
+These are campaign recommendations, not voter behaviour. A how-to-vote card does not measure how many voters receive it, follow it or transfer preferences accordingly. The VEC describes cards as suggestions; voters choose their own numbering.
+
+### Dated Kew evidence timeline
+
+The Kew timeline combines dated polling publication, campaign-reach reporting, disclosure snapshots, preference-card verification and external model benchmarks. Each entry links to its source and retains the type of evidence. It is a chronology, not a composite sentiment score; the entries measure different things and must not be combined as if they were equivalent observations.
+
+### Statewide seat-projection comparison
+
+`data/vic_seat_projection_benchmarks.csv` stores four externally published snapshots: Australian Election Tracker, Seat Projections, Poliwave and Polling Forecast. Each row records its model date, polling-data date, seat-count type, party/independent seat counts, published ranges (where available), majority threshold, method summary, limitations and source URL.
+
+The outputs are not directly interchangeable. Australian Election Tracker reports central scenario seats led by party and marks 32 seats as in doubt; the other sources report simulation means or central simulation counts. Seat Projections has published a warning that its uncertainty ranges have been too narrow in its limited backtesting. The dashboard displays the sources side by side and does not average them or use them as inputs to a Kew candidate forecast. All are external model outputs, not verified election results.
 
 ## Candidate research — Kew
 
